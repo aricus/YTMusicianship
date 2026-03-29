@@ -41,7 +41,9 @@ It is a self-hosted service that runs on your machine (inside Docker) and gives 
 ## Features
 
 ### 🎲 True Shuffle
-Fetch your **entire** playlist, shuffle it client-side with Fisher-Yates, and create a new playlist with the full shuffled order. No more 50-song limits! For playlists you own, the old one is automatically deleted and replaced.
+Fetch your **entire** playlist, shuffle it client-side with Fisher-Yates, and create a new playlist with the full shuffled order. No more 50-song limits!
+
+When shuffling a single playlist that you own, the new shuffled playlist will have the same name as the original (plus "(Shuffled)"), and the original is cleaned up automatically. Your music stays organized without duplicate playlists cluttering your library.
 
 **Multi-Playlist Shuffle**: Select multiple playlists and combine them into one giant shuffled mix—perfect for parties or discovering forgotten favorites across different collections.
 
@@ -489,8 +491,8 @@ All REST endpoints are prefixed with `/api`.
 - The **Easy Auth** method makes this quick and painless
 
 ### Shuffle fails for a playlist
-- YouTube Music "system" playlists (like Your Likes) cannot be deleted. For these, YTMusicianship creates a new shuffled playlist instead of replacing the old one.
-- Ensure the playlist is owned by your account if you expect replacement behavior.
+- YouTube Music "system" playlists (like Your Likes) cannot be deleted. For these, YTMusicianship creates a new shuffled playlist with a different name.
+- When shuffling a single user-owned playlist, the original is replaced with the shuffled version to keep your library tidy.
 
 ### MusicMatch AI generation fails
 - Check that AI settings are configured in **Settings → AI Configuration**
