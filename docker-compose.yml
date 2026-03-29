@@ -1,0 +1,14 @@
+services:
+  ytmusicianship:
+    build: .
+    container_name: ytmusicianship
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./data:/app/data
+    environment:
+      - YTM_PORT=8080
+      - YTM_DB_PATH=/app/data/ytm.db
+      - YTM_OAUTH_PATH=/app/data/oauth.json
+      - YTM_LOG_LEVEL=info
+    restart: unless-stopped

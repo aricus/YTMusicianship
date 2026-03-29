@@ -1,0 +1,117 @@
+{
+  "name": "YTMusicianship",
+  "version": "0.1.0",
+  "description": "AI-powered YouTube Music automation with true shuffle, playlist generation, and automatic taste ranking.",
+  "transport": {
+    "type": "mcp-sse",
+    "url": "http://localhost:8080/mcp"
+  },
+  "tools": [
+    {
+      "name": "list_playlists",
+      "description": "List the user's YouTube Music playlists."
+    },
+    {
+      "name": "get_playlist_tracks",
+      "description": "Get all tracks in a playlist. Use limit=0 for no limit.",
+      "parameters": {
+        "playlist_id": { "type": "string" },
+        "limit": { "type": "integer", "default": 0 }
+      }
+    },
+    {
+      "name": "get_liked_songs",
+      "description": "Get the user's liked songs.",
+      "parameters": {
+        "limit": { "type": "integer", "optional": true }
+      }
+    },
+    {
+      "name": "search_yt_music",
+      "description": "Search YouTube Music for songs, albums, or artists.",
+      "parameters": {
+        "query": { "type": "string" },
+        "limit": { "type": "integer", "default": 20 }
+      }
+    },
+    {
+      "name": "true_shuffle_playlist",
+      "description": "True-shuffle an entire playlist. Fetches all tracks, shuffles them, creates a new playlist with the shuffled order, and deletes the old playlist if owned.",
+      "parameters": {
+        "playlist_id": { "type": "string" },
+        "target_name": { "type": "string", "optional": true }
+      }
+    },
+    {
+      "name": "add_tracks_to_playlist",
+      "description": "Add one or more tracks to a playlist by their video IDs.",
+      "parameters": {
+        "playlist_id": { "type": "string" },
+        "video_ids": { "type": "array", "items": "string" }
+      }
+    },
+    {
+      "name": "remove_tracks_from_playlist",
+      "description": "Remove one or more tracks from a playlist by their video IDs.",
+      "parameters": {
+        "playlist_id": { "type": "string" },
+        "video_ids": { "type": "array", "items": "string" }
+      }
+    },
+    {
+      "name": "generate_playlist",
+      "description": "Create a new playlist from a list of video IDs chosen by the AI or user.",
+      "parameters": {
+        "name": { "type": "string" },
+        "track_ids": { "type": "array", "items": "string" },
+        "description": { "type": "string", "default": "" }
+      }
+    },
+    {
+      "name": "sync_history",
+      "description": "Sync listening history from YouTube Music and recompute rankings."
+    },
+    {
+      "name": "get_top_songs",
+      "description": "Get the top-ranked songs based on listening history and likes.",
+      "parameters": {
+        "limit": { "type": "integer", "default": 20 }
+      }
+    },
+    {
+      "name": "get_top_artists",
+      "description": "Get the top-ranked artists based on listening history and likes.",
+      "parameters": {
+        "limit": { "type": "integer", "default": 20 }
+      }
+    },
+    {
+      "name": "get_song_ranking",
+      "description": "Get the computed ranking score for a specific song by video ID.",
+      "parameters": {
+        "video_id": { "type": "string" }
+      }
+    },
+    {
+      "name": "create_scheduled_job",
+      "description": "Create a scheduled job. Actions: 'shuffle' or 'sync_history'. Cron is a 5-field string like '0 8 * * 1' for Monday 8am.",
+      "parameters": {
+        "name": { "type": "string" },
+        "action": { "type": "string", "enum": ["shuffle", "sync_history"] },
+        "cron": { "type": "string" },
+        "target_playlist_id": { "type": "string", "optional": true }
+      }
+    },
+    {
+      "name": "list_scheduled_jobs",
+      "description": "List all scheduled jobs."
+    },
+    {
+      "name": "delete_scheduled_job",
+      "description": "Delete a scheduled job by its ID.",
+      "parameters": {
+        "job_id": { "type": "string" }
+      }
+    }
+  ]
+}
