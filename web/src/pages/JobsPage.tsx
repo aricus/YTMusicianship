@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { api } from "../api";
 import type { Job } from "../types";
-import { Button, Card, CardHeader, CardContent, Input, Alert, Badge } from "../components/ui";
+import { Button, Card, CardHeader, CardContent, Input, Alert } from "../components/ui";
 
 function ClockIcon({ className = "w-5 h-5" }: { className?: string }) {
   return (

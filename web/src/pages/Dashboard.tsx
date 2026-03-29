@@ -10,7 +10,6 @@ import {
   Badge,
   Input,
   Alert,
-  SectionTitle,
   EmptyState,
   ListItem
 } from "../components/ui";

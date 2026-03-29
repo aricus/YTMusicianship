@@ -9,7 +9,6 @@ import {
   Badge,
   Input,
   Alert,
-  SectionTitle,
   Toggle,
   Slider
 } from "../components/ui";

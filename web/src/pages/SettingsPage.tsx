@@ -6,8 +6,7 @@ import {
   CardHeader,
   CardContent,
   Input,
-  Alert,
-  SectionTitle
+  Alert
 } from "../components/ui";
 
 // Icons
