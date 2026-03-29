@@ -78,7 +78,7 @@ cd ytmusicianship
 docker compose up --build -d
 ```
 
-The service will be available at: **http://localhost:8080**
+The service will be available at: **http://localhost:8082**
 
 ### 3. Authenticate with YouTube Music
 
@@ -100,7 +100,7 @@ This writes `oauth.json` to the `./data/` folder on your host, which is persiste
 
 ### 4. Open the Web GUI
 
-Navigate to **http://localhost:8080**
+Navigate to **http://localhost:8082**
 
 You should see the Dashboard with a green "Authenticated" badge.
 
@@ -108,59 +108,85 @@ You should see the Dashboard with a green "Authenticated" badge.
 
 ## YouTube Music Authentication
 
-YouTube Music does not have an official public API, so this project uses the excellent open-source **[ytmusicapi](https://github.com/sigma67/ytmusicapi)** library. Authentication is done via **OAuth**, which is safe, reliable, and supports automatic token refresh.
+YouTube Music does not have an official public API, so this project uses the excellent open-source **[ytmusicapi](https://github.com/sigma67/ytmusicapi)** library. Authentication can be done via **OAuth** (requires Google Cloud credentials) or **Browser Headers** (copy from your browser).
 
-### Option A: OAuth inside the container (recommended)
+### Option A: OAuth (requires Google Cloud setup)
 
-1. Run the built-in OAuth helper interactively:
+This is the most reliable long-term method. You'll need to create OAuth credentials in Google Cloud Console.
+
+1. **Create OAuth credentials** (one-time setup):
+   - Go to [Google Cloud Console](https://console.cloud.google.com/)
+   - Create a new project or select existing
+   - Enable the **YouTube Data API v3**
+   - Go to **Credentials** → **Create Credentials** → **OAuth client ID**
+   - Choose **TV and Limited Input devices** as the application type
+   - Note your **Client ID** and **Client Secret**
+
+2. **Run OAuth inside the container**:
 
 ```bash
 docker exec -it ytmusicianship bash
-ytmusicapi oauth
+python /app/oauth_helper.py "YOUR_CLIENT_ID" "YOUR_CLIENT_SECRET" /app/data/oauth.json
 ```
 
-2. You will see a URL like:
+3. You will see a URL like:
 
 ```
-Visit https://www.google.com/device?user_code=XXXX-XXXX
+Go to: https://www.google.com/device?user_code=XXXX-XXXX
 ```
 
-3. Open that URL in your browser, sign in with the Google account tied to your YouTube Music, and confirm the device.
+4. Open that URL in your browser, sign in with the Google account tied to your YouTube Music, and confirm the device.
 
-4. Return to the terminal. If successful, you'll see:
+5. Return to the terminal and press Enter. If successful, you'll see:
 
 ```
-oauth.json created successfully
+✅ Saved OAuth credentials to /app/data/oauth.json
 ```
 
-5. Exit the container:
+6. Exit the container:
 
 ```bash
 exit
 ```
 
-The file is automatically saved to `./data/oauth.json` on your host because of the Docker volume mount.
+### Option B: Browser Headers (quickest, no setup)
 
-### Option B: Upload via the Web GUI
+If you don't want to set up Google Cloud credentials:
+
+1. **Make sure you're logged in** to [music.youtube.com](https://music.youtube.com) in your browser
+2. Open Developer Tools → Network tab (F12)
+3. **Look for a request to `/browse`** (NOT `/search` or other endpoints)
+   - Click around the YouTube Music interface until you see a `browse` request
+   - The request should contain headers like `cookie`, `x-goog-authuser`, etc.
+4. Right-click the `/browse` request → Copy → Copy as cURL
+5. Inside the container, run:
+
+```bash
+docker exec -it ytmusicianship bash
+ytmusicapi browser --file /app/data/oauth.json
+# Paste the cURL command when prompted, then press Ctrl+D
+```
+
+6. Exit the container:
+
+```bash
+exit
+```
+
+> **Tip:** If you get an error about missing headers, try a different `/browse` request or refresh the page and try again.
+
+The browser headers method creates an `oauth.json` file that works the same way.
+
+### Option C: Upload via the Web GUI
 
 If you already have an `oauth.json` file from another machine:
 
-1. Open **http://localhost:8080**
+1. Open **http://localhost:8082**
 2. Click the **Upload oauth.json** button on the Dashboard
 3. Select your file
 4. The app will validate it immediately
 
-### Option C: Manual browser headers (fallback)
-
-If OAuth doesn't work in your region, you can use browser headers instead:
-
-1. Open [music.youtube.com](https://music.youtube.com) in your browser
-2. Open Developer Tools → Network tab
-3. Find any request to `music.youtube.com` (e.g., `browse`)
-4. Right-click → Copy → Copy as cURL
-5. Use `ytmusicapi browser` authentication to generate the headers file
-
-> For most users, **Option A (OAuth)** is simpler and more reliable.
+> **Note:** Browser headers may expire after some time and need refreshing. OAuth is more reliable for long-term use.
 
 ---
 
@@ -198,7 +224,7 @@ If OAuth doesn't work in your region, you can use browser headers instead:
 YTMusicianship exposes an **MCP server** over **SSE (Server-Sent Events)** at:
 
 ```
-http://localhost:8080/mcp
+http://localhost:8082/mcp
 ```
 
 ### Claude Desktop
@@ -213,7 +239,7 @@ Edit your Claude Desktop configuration and add the server:
 {
   "mcpServers": {
     "ytmusicianship": {
-      "url": "http://localhost:8080/mcp"
+      "url": "http://localhost:8082/mcp"
     }
   }
 }
@@ -229,7 +255,7 @@ Restart Claude Desktop. You can now ask things like:
 
 ### OpenClaw / Custom Agents
 
-Any MCP client that supports HTTP/SSE transport can connect to `http://localhost:8080/mcp`.
+Any MCP client that supports HTTP/SSE transport can connect to `http://localhost:8082/mcp`.
 
 See `skill-definition/ytmusicianship.json` for a full machine-readable tool manifest.
 
@@ -318,11 +344,11 @@ All REST endpoints are prefixed with `/api`.
 
 ### Docker build errors
 - Ensure Docker Engine is running
-- Ensure port `8080` is free on your host (or change it in `docker-compose.yml`)
+- Ensure port `8082` is free on your host (or change it in `docker-compose.yml`)
 
 ### MCP client cannot connect
 - Verify the container is running: `docker ps`
-- Test the endpoint: `curl http://localhost:8080/mcp` should not return a connection error
+- Test the endpoint: `curl http://localhost:8082/mcp` should not return a connection error
 - Ensure your MCP client supports SSE transport over HTTP
 
 ---

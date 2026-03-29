@@ -4,7 +4,7 @@
   "description": "AI-powered YouTube Music automation with true shuffle, playlist generation, and automatic taste ranking.",
   "transport": {
     "type": "mcp-sse",
-    "url": "http://localhost:8080/mcp"
+    "url": "http://localhost:8082/mcp"
   },
   "tools": [
     {

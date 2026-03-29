@@ -6,6 +6,7 @@ from pathlib import Path
 from ytmusicianship.config import settings
 from ytmusicianship.yt_client import yt_client
 from ytmusicianship.services import library, playlist, ranking, jobs
+from ytmusicianship.db import AsyncSessionLocal, Setting
 
 router = APIRouter()
 
@@ -31,6 +32,19 @@ class CreateJobRequest(BaseModel):
 
 class ShuffleRequest(BaseModel):
     target_name: Optional[str] = None
+
+
+class AISettingsPayload(BaseModel):
+    ai_base_url: str = ""
+    ai_api_key: str = ""
+    ai_model: str = ""
+
+
+class MusicMatchRequest(BaseModel):
+    source_playlist_id: str
+    name: str
+    description: str = ""
+    mode: str = Field(default="auto", pattern="^(exact|search|auto)$")
 
 
 @router.get("/health", response_model=HealthResponse)
@@ -124,6 +138,45 @@ async def remove_tracks(playlist_id: str, payload: dict):
 async def generate_playlist(payload: GeneratePlaylistRequest):
     pl_id = await playlist.generate_playlist(name=payload.name, track_ids=payload.track_ids, description=payload.description)
     return {"playlist_id": pl_id}
+
+
+# AI Settings
+@router.get("/settings/ai")
+async def get_ai_settings():
+    async with AsyncSessionLocal() as session:
+        keys = ["ai_base_url", "ai_api_key", "ai_model"]
+        result = {}
+        for k in keys:
+            row = await session.get(Setting, k)
+            val = row.value if row else ""
+            result[k] = val
+        # Mask API key
+        if result.get("ai_api_key"):
+            result["ai_api_key"] = "***"
+        return result
+
+
+@router.post("/settings/ai")
+async def save_ai_settings(payload: AISettingsPayload):
+    async with AsyncSessionLocal() as session:
+        for key, value in payload.model_dump().items():
+            row = await session.get(Setting, key)
+            if row:
+                row.value = value
+            else:
+                session.add(Setting(key=key, value=value))
+        await session.commit()
+    return {"status": "ok"}
+
+
+@router.post("/playlists/musicmatch")
+async def musicmatch_endpoint(payload: MusicMatchRequest):
+    return await playlist.musicmatch(
+        source_playlist_id=payload.source_playlist_id,
+        name=payload.name,
+        description=payload.description,
+        mode=payload.mode,
+    )
 
 
 # Rankings

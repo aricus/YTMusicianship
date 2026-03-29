@@ -48,6 +48,13 @@ class ScheduledJob(Base):
     created_at: Mapped[datetime.datetime] = mapped_column(DateTime, default=func.now())
 
 
+class Setting(Base):
+    __tablename__ = "settings"
+
+    key: Mapped[str] = mapped_column(String, primary_key=True)
+    value: Mapped[str] = mapped_column(String, default="")
+
+
 def get_engine():
     db_path = settings.ytm_db_path
     db_path.parent.mkdir(parents=True, exist_ok=True)

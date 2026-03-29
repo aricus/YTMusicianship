@@ -68,4 +68,10 @@ export const api = {
     }),
   deleteJob: (jobId: string) =>
     fetchJson(`${API_BASE}/jobs/${encodeURIComponent(jobId)}`, { method: "DELETE" }),
+  musicmatch: (payload: { source_playlist_id: string; name: string; description?: string; mode?: string }) =>
+    fetchJson(`${API_BASE}/playlists/musicmatch`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    }),
 };

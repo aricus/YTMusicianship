@@ -13,12 +13,12 @@ WORKDIR /app
 # Install build dependencies for any compiled python packages
 RUN apt-get update && apt-get install -y --no-install-recommends gcc && rm -rf /var/lib/apt/lists/*
 
-# Copy and install Python dependencies
+# Copy Python files
 COPY pyproject.toml ./
-RUN pip install --no-cache-dir -e ".[prod]"
-
-# Copy backend source
 COPY src/ ./src/
+
+# Install the package
+RUN pip install --no-cache-dir -e "."
 
 # Copy built frontend
 COPY --from=web-builder /app/web/dist ./web/dist

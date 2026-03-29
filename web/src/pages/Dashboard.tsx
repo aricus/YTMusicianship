@@ -14,6 +14,11 @@ export default function Dashboard() {
   const [generating, setGenerating] = useState(false);
   const [genName, setGenName] = useState("");
   const [message, setMessage] = useState("");
+  const [sourcePlaylist, setSourcePlaylist] = useState("");
+  const [mmName, setMmName] = useState("");
+  const [mmDesc, setMmDesc] = useState("");
+  const [mmMode, setMmMode] = useState<"exact" | "search" | "auto">("auto");
+  const [mmLoading, setMmLoading] = useState(false);
 
   useEffect(() => {
     loadAll();
@@ -83,6 +88,32 @@ export default function Dashboard() {
       await loadAll();
     } catch (err: any) {
       setMessage("Upload error: " + err.message);
+    }
+  }
+
+  async function handleMusicMatch() {
+    if (!sourcePlaylist || !mmName) return;
+    setMmLoading(true);
+    setMessage("Generating playlist with AI...");
+    try {
+      const res = await api.musicmatch({
+        source_playlist_id: sourcePlaylist,
+        name: mmName,
+        description: mmDesc,
+        mode: mmMode,
+      });
+      if (res.status === "ok") {
+        setMessage(`Created playlist "${mmName}" with ${res.tracks.length} tracks!`);
+        setMmName("");
+        setMmDesc("");
+        loadAll();
+      } else {
+        setMessage("Error: " + (res.message || "Unknown error"));
+      }
+    } catch (err: any) {
+      setMessage("MusicMatch error: " + err.message);
+    } finally {
+      setMmLoading(false);
     }
   }
 
@@ -217,6 +248,71 @@ export default function Dashboard() {
               {t.title} — <span className="text-gray-400">{t.artist}</span>
             </div>
           ))}
+        </div>
+      </section>
+
+      <section className="rounded-xl border border-gray-700 bg-gray-800 p-4">
+        <h2 className="text-lg font-semibold mb-3">MusicMatch — Generate from Playlist</h2>
+        <div className="space-y-3">
+          <div>
+            <label className="block text-xs text-gray-400 mb-1">Source Playlist</label>
+            <select
+              value={sourcePlaylist}
+              onChange={(e) => setSourcePlaylist(e.target.value)}
+              className="w-full rounded border border-gray-600 bg-gray-900 px-3 py-2 text-sm outline-none focus:border-indigo-500"
+            >
+              <option value="">Select a playlist...</option>
+              {playlists.map((pl) => (
+                <option key={pl.playlist_id} value={pl.playlist_id}>{pl.title}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs text-gray-400 mb-1">New Playlist Name</label>
+            <input
+              type="text"
+              value={mmName}
+              onChange={(e) => setMmName(e.target.value)}
+              placeholder="Inspired Mix"
+              className="w-full rounded border border-gray-600 bg-gray-900 px-3 py-2 text-sm outline-none focus:border-indigo-500"
+            />
+          </div>
+          <div>
+            <label className="block text-xs text-gray-400 mb-1">Description (optional)</label>
+            <input
+              type="text"
+              value={mmDesc}
+              onChange={(e) => setMmDesc(e.target.value)}
+              placeholder="AI-generated based on my favorites"
+              className="w-full rounded border border-gray-600 bg-gray-900 px-3 py-2 text-sm outline-none focus:border-indigo-500"
+            />
+          </div>
+          <div>
+            <label className="block text-xs text-gray-400 mb-1">Mode</label>
+            <div className="flex gap-2">
+              {(["exact", "search", "auto"] as const).map((m) => (
+                <button
+                  key={m}
+                  onClick={() => setMmMode(m)}
+                  className={`rounded px-3 py-1 text-xs font-medium capitalize ${
+                    mmMode === m ? "bg-indigo-600 text-white" : "bg-gray-700 text-gray-300 hover:bg-gray-600"
+                  }`}
+                >
+                  {m}
+                </button>
+              ))}
+            </div>
+            <p className="text-xs text-gray-500 mt-1">
+              Exact = specific songs • Search = creative queries • Auto = intelligent mix
+            </p>
+          </div>
+          <button
+            onClick={handleMusicMatch}
+            disabled={mmLoading || !sourcePlaylist || !mmName}
+            className="w-full rounded bg-emerald-600 px-4 py-2 text-sm font-medium hover:bg-emerald-500 disabled:opacity-50"
+          >
+            {mmLoading ? "Generating..." : "Generate Playlist"}
+          </button>
         </div>
       </section>
     </div>
