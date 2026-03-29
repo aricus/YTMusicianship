@@ -526,6 +526,8 @@ MIT — use it, fork it, improve it.
 
 Built with love for music lovers who are tired of the 50-song shuffle limit.
 
+**Created by Robert McClellan**
+
 ---
 
 ## Credits
