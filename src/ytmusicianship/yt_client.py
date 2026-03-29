@@ -19,7 +19,37 @@ class YTClient:
         if self._yt is None:
             if not self.is_authenticated():
                 raise RuntimeError("Not authenticated: oauth.json missing")
-            self._yt = YTMusic(str(settings.ytm_oauth_path))
+            # Check if file is browser headers format (raw text) or OAuth format (JSON)
+            import json
+            content = Path(settings.ytm_oauth_path).read_text()
+            # Try to parse as JSON first
+            try:
+                auth_data = json.loads(content)
+                # If it's a dict with oauth token fields, it's OAuth format
+                if isinstance(auth_data, dict) and ("access_token" in auth_data or "refresh_token" in auth_data):
+                    # OAuth auth - pass file path and load credentials separately
+                    from ytmusicapi.auth.oauth import OAuthCredentials
+                    creds_path = settings.ytm_oauth_path.parent / "oauth_creds.json"
+                    if creds_path.exists():
+                        with open(creds_path) as f:
+                            creds_data = json.load(f)
+                        oauth_creds_obj = OAuthCredentials(
+                            client_id=creds_data.get("client_id", ""),
+                            client_secret=creds_data.get("client_secret", "")
+                        )
+                    else:
+                        oauth_creds_obj = None
+                    self._yt = YTMusic(
+                        str(settings.ytm_oauth_path),
+                        oauth_credentials=oauth_creds_obj
+                    )
+                else:
+                    # JSON with headers - pass as auth dict
+                    self._yt = YTMusic(auth=auth_data)
+            except json.JSONDecodeError:
+                # Not valid JSON - assume it's raw headers text for browser auth
+                # Pass the file path and let ytmusicapi parse the headers
+                self._yt = YTMusic(str(settings.ytm_oauth_path))
         return self._yt
 
     def invalidate(self):
@@ -29,7 +59,7 @@ class YTClient:
         loop = asyncio.get_event_loop()
         return await loop.run_in_executor(None, partial(self._get_yt().get_library_playlists, limit))
 
-    async def get_playlist(self, playlist_id: str, limit: int = 0):
+    async def get_playlist(self, playlist_id: str, limit: int = 5000):
         loop = asyncio.get_event_loop()
         return await loop.run_in_executor(None, partial(self._get_yt().get_playlist, playlistId=playlist_id, limit=limit))
 
@@ -53,7 +83,7 @@ class YTClient:
         loop = asyncio.get_event_loop()
         return await loop.run_in_executor(None, partial(self._get_yt().remove_playlist_items, playlistId=playlist_id, videos=videos))
 
-    async def get_liked_songs(self, limit: int = 0):
+    async def get_liked_songs(self, limit: int = 5000):
         loop = asyncio.get_event_loop()
         return await loop.run_in_executor(None, partial(self._get_yt().get_liked_songs, limit))
 

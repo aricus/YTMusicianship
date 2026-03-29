@@ -108,48 +108,17 @@ You should see the Dashboard with a green "Authenticated" badge.
 
 ## YouTube Music Authentication
 
-YouTube Music does not have an official public API, so this project uses the excellent open-source **[ytmusicapi](https://github.com/sigma67/ytmusicapi)** library. Authentication can be done via **OAuth** (requires Google Cloud credentials) or **Browser Headers** (copy from your browser).
+YouTube Music does not have an official public API, so this project uses the excellent open-source **[ytmusicapi](https://github.com/sigma67/ytmusicapi)** library.
 
-### Option A: OAuth (requires Google Cloud setup)
+**⚠️ IMPORTANT:** Due to recent changes in how Google handles OAuth for YouTube Music, the **Browser Headers method (Option A)** is currently the most reliable approach.
 
-This is the most reliable long-term method. You'll need to create OAuth credentials in Google Cloud Console.
+### Option A: Browser Headers (Recommended - Easiest)
 
-1. **Create OAuth credentials** (one-time setup):
-   - Go to [Google Cloud Console](https://console.cloud.google.com/)
-   - Create a new project or select existing
-   - Enable the **YouTube Data API v3**
-   - Go to **Credentials** → **Create Credentials** → **OAuth client ID**
-   - Choose **TV and Limited Input devices** as the application type
-   - Note your **Client ID** and **Client Secret**
+This method copies your authentication directly from your browser. It's the quickest way to get started.
 
-2. **Run OAuth inside the container**:
-
-```bash
-docker exec -it ytmusicianship bash
-python /app/oauth_helper.py "YOUR_CLIENT_ID" "YOUR_CLIENT_SECRET" /app/data/oauth.json
-```
-
-3. You will see a URL like:
-
-```
-Go to: https://www.google.com/device?user_code=XXXX-XXXX
-```
-
-4. Open that URL in your browser, sign in with the Google account tied to your YouTube Music, and confirm the device.
-
-5. Return to the terminal and press Enter. If successful, you'll see:
-
-```
-✅ Saved OAuth credentials to /app/data/oauth.json
-```
-
-6. Exit the container:
-
-```bash
-exit
-```
-
-### Option B: Browser Headers (quickest, no setup)
+1. **Make sure you're logged in** to [music.youtube.com](https://music.youtube.com) in your browser
+2. Open Developer Tools → Network tab (F12)
+3. **Look for a request to `/browse`** (NOT `/search` or other endpoints)
 
 If you don't want to set up Google Cloud credentials:
 
@@ -186,7 +155,28 @@ If you already have an `oauth.json` file from another machine:
 3. Select your file
 4. The app will validate it immediately
 
-> **Note:** Browser headers may expire after some time and need refreshing. OAuth is more reliable for long-term use.
+> **Note:** Browser headers may expire after some time and need refreshing (usually after several weeks).
+
+### Option B: OAuth (Advanced - May Not Work Reliably)
+
+**⚠️ WARNING:** OAuth authentication with ytmusicapi is currently unreliable due to Google API changes. Only use this if browser headers don't work for you.
+
+1. **Create OAuth credentials** (one-time setup):
+   - Go to [Google Cloud Console](https://console.cloud.google.com/)
+   - Create a new project or select existing
+   - Enable the **YouTube Data API v3**
+   - Go to **Credentials** → **Create Credentials** → **OAuth client ID**
+   - Choose **TV and Limited Input devices** as the application type
+   - Note your **Client ID** and **Client Secret**
+
+2. **Run OAuth inside the container**:
+
+```bash
+docker exec -it ytmusicianship bash
+python /app/oauth_helper.py "YOUR_CLIENT_ID" "YOUR_CLIENT_SECRET" /app/data/oauth.json
+```
+
+3. Visit the URL shown, enter the code, and complete the Google sign-in.
 
 ---
 

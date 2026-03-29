@@ -3,6 +3,8 @@ import Dashboard from './pages/Dashboard'
 import PlaylistPage from './pages/PlaylistPage'
 import RankingsPage from './pages/RankingsPage'
 import JobsPage from './pages/JobsPage'
+import SettingsPage from './pages/SettingsPage'
+import MusicMatchPage from './pages/MusicMatchPage'
 
 function Nav() {
   return (
@@ -11,8 +13,10 @@ function Nav() {
         <Link to="/" className="font-bold text-lg text-indigo-400 hover:text-indigo-300">YTMusicianship</Link>
         <div className="flex gap-4 text-sm">
           <Link to="/" className="hover:text-white text-gray-300">Dashboard</Link>
+          <Link to="/musicmatch" className="hover:text-white text-gray-300">MusicMatch</Link>
           <Link to="/rankings" className="hover:text-white text-gray-300">Rankings</Link>
           <Link to="/jobs" className="hover:text-white text-gray-300">Jobs</Link>
+          <Link to="/settings" className="hover:text-white text-gray-300">Settings</Link>
         </div>
       </div>
     </nav>
@@ -28,8 +32,10 @@ export default function App() {
           <Routes>
             <Route path="/" element={<Dashboard />} />
             <Route path="/playlist/:playlistId" element={<PlaylistPage />} />
+            <Route path="/musicmatch" element={<MusicMatchPage />} />
             <Route path="/rankings" element={<RankingsPage />} />
             <Route path="/jobs" element={<JobsPage />} />
+            <Route path="/settings" element={<SettingsPage />} />
           </Routes>
         </main>
       </div>

@@ -47,10 +47,20 @@ def oauth_device_flow(client_id: str, client_secret: str, output_path: str):
     if "refresh_token_expires_in" in token_info:
         del token_info["refresh_token_expires_in"]
 
-    # Save to file
+    # Save token info (without oauth_credentials to avoid ytmusicapi bug)
     output = Path(output_path)
     output.write_text(json.dumps(token_info, indent=2))
-    print(f"\n✅ Saved OAuth credentials to {output_path}")
+
+    # Save credentials to a separate file
+    creds_path = output.parent / "oauth_creds.json"
+    creds_data = {
+        "client_id": client_id,
+        "client_secret": client_secret
+    }
+    creds_path.write_text(json.dumps(creds_data, indent=2))
+
+    print(f"\n✅ Saved OAuth token to {output_path}")
+    print(f"✅ Saved OAuth credentials to {creds_path}")
 
 
 if __name__ == "__main__":

@@ -32,6 +32,12 @@ export const api = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ target_name: targetName }),
     }),
+  shuffleMultiplePlaylists: (playlistIds: string[], targetName?: string) =>
+    fetchJson(`${API_BASE}/playlists/shuffle`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ playlist_ids: playlistIds, target_name: targetName }),
+    }),
   addTracks: (playlistId: string, videoIds: string[]) =>
     fetchJson(`${API_BASE}/playlists/${encodeURIComponent(playlistId)}/tracks`, {
       method: "POST",
@@ -68,10 +74,37 @@ export const api = {
     }),
   deleteJob: (jobId: string) =>
     fetchJson(`${API_BASE}/jobs/${encodeURIComponent(jobId)}`, { method: "DELETE" }),
-  musicmatch: (payload: { source_playlist_id: string; name: string; description?: string; mode?: string }) =>
+  deletePlaylist: (playlistId: string) =>
+    fetchJson(`${API_BASE}/playlists/${encodeURIComponent(playlistId)}`, { method: "DELETE" }),
+  submitAuthCookies: (cookies: { sid: string; login_info: string; authuser?: string; sapisid: string }) =>
+    fetchJson(`${API_BASE}/auth/cookies`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(cookies),
+    }),
+  musicmatch: (payload: { source_playlist_ids?: string[]; source_artists?: string[]; name?: string; description?: string; mode?: string; use_ai?: boolean; selection_weight?: number }) =>
     fetchJson(`${API_BASE}/playlists/musicmatch`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
+    }),
+  getLikedArtists: () => fetchJson(`${API_BASE}/library/artists`),
+  getTasteProfile: () => fetchJson(`${API_BASE}/musicmatch/taste-profile`),
+  getAISettings: () => fetchJson(`${API_BASE}/settings/ai`),
+  saveAISettings: (settings: { ai_base_url: string; ai_api_key: string; ai_model: string }) =>
+    fetchJson(`${API_BASE}/settings/ai`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(settings),
+    }),
+  submitHeaders: (payload: { headers: string }) =>
+    fetchJson(`${API_BASE}/auth/headers`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    }),
+  deleteAuth: () =>
+    fetchJson(`${API_BASE}/auth`, {
+      method: "DELETE",
     }),
 };

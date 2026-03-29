@@ -14,27 +14,22 @@ async def sync_history(limit: Optional[int] = None) -> dict:
         history = history[:limit]
 
     async with AsyncSessionLocal() as session:
-        # Collect existing video_ids to deduplicate exact same second
-        existing_stmt = select(PlayEvent.video_id, PlayEvent.played_at)
-        existing = await session.execute(existing_stmt)
-        existing_set = {(row.video_id, row.played_at) for row in existing.scalars().all()}
-
         added = 0
-        for track in history:
+        now = datetime.datetime.utcnow()
+        # Add each play event with a slight time offset to preserve order
+        for idx, track in enumerate(history):
             video_id = track.get("video_id")
             if not video_id:
                 continue
-            now = datetime.datetime.utcnow()
-            key = (video_id, now)
-            if key in existing_set:
-                continue
+            # Offset by index seconds to preserve play order
+            played_at = now - datetime.timedelta(seconds=idx)
             event = PlayEvent(
                 video_id=video_id,
                 title=track.get("title"),
                 artist=track.get("artist"),
                 album=track.get("album"),
-                genre=None,  # ytmusicapi history doesn't expose genre directly
-                played_at=now,
+                genre=None,
+                played_at=played_at,
             )
             session.add(event)
             added += 1

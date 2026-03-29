@@ -7,6 +7,7 @@ from ytmusicianship.config import settings
 from ytmusicianship.yt_client import yt_client
 from ytmusicianship.services import library, playlist, ranking, jobs
 from ytmusicianship.db import AsyncSessionLocal, Setting
+from ytmusicianship.auth.oauth_flow import generate_oauth_url, exchange_code
 
 router = APIRouter()
 
@@ -41,10 +42,20 @@ class AISettingsPayload(BaseModel):
 
 
 class MusicMatchRequest(BaseModel):
-    source_playlist_id: str
-    name: str
+    source_playlist_ids: list[str] = []
+    source_artists: list[str] = []
+    name: str = ""  # Optional - AI will generate if not provided
     description: str = ""
     mode: str = Field(default="auto", pattern="^(exact|search|auto)$")
+    use_ai: bool = False  # Enable AI-powered generation
+    selection_weight: int = Field(default=50, ge=0, le=100)  # 0 = fully exploratory, 100 = strictly selections
+
+
+class AuthCookiesPayload(BaseModel):
+    sid: str
+    login_info: str
+    authuser: str = "0"
+    sapisid: str  # __Secure-3PAPISID cookie value
 
 
 @router.get("/health", response_model=HealthResponse)
@@ -72,6 +83,181 @@ async def upload_auth(file: UploadFile = File(...)):
         return {"status": "ok", "message": "oauth.json uploaded and validated"}
     except Exception as e:
         return {"status": "error", "message": str(e)}
+
+
+@router.post("/auth/cookies")
+async def submit_auth_cookies(payload: AuthCookiesPayload):
+    """Submit auth cookies from browser to create oauth.json"""
+    import json
+    import time
+    from hashlib import sha1
+
+    # Generate SAPISIDHASH from __Secure-3PAPISID cookie
+    # This is required for browser authentication
+    unix_timestamp = str(int(time.time()))
+    auth_string = f"{payload.sapisid} https://music.youtube.com"
+    sha1_hash = sha1((unix_timestamp + " " + auth_string).encode("utf-8")).hexdigest()
+    authorization = f"SAPISIDHASH {unix_timestamp}_{sha1_hash}"
+
+    auth_data = {
+        "cookie": f"SID={payload.sid}; LOGIN_INFO={payload.login_info}; __Secure-3PAPISID={payload.sapisid}",
+        "authorization": authorization,
+        "x-goog-authuser": payload.authuser,
+        "origin": "https://music.youtube.com",
+        "x-origin": "https://music.youtube.com",
+        "referer": "https://music.youtube.com/",
+        "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36"
+    }
+
+    settings.ytm_oauth_path.parent.mkdir(parents=True, exist_ok=True)
+    with open(settings.ytm_oauth_path, "w") as f:
+        json.dump(auth_data, f, indent=2)
+
+    yt_client.invalidate()
+
+    # Verify it works
+    try:
+        await yt_client.get_library_playlists(limit=1)
+        return {"status": "ok", "message": "Authentication successful"}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+
+class OAuthStartRequest(BaseModel):
+    client_id: str
+    client_secret: str
+
+
+class OAuthCallbackRequest(BaseModel):
+    code: str
+    state: str
+
+
+@router.post("/auth/oauth/start")
+async def oauth_start(payload: OAuthStartRequest):
+    """Start OAuth flow and return URL for user to visit."""
+    from ytmusicianship.auth.oauth_flow import generate_oauth_url
+
+    auth_url, state = generate_oauth_url(
+        client_id=payload.client_id,
+        client_secret=payload.client_secret,
+        redirect_uri="urn:ietf:wg:oauth:2.0:oob",  # Out-of-band flow
+    )
+
+    return {
+        "status": "ok",
+        "auth_url": auth_url,
+        "state": state,
+        "instructions": "1. Open the auth_url in your browser\n2. Sign in with Google\n3. Copy the authorization code\n4. Call /auth/oauth/complete with the code",
+    }
+
+
+@router.post("/auth/oauth/complete")
+async def oauth_complete(payload: OAuthCallbackRequest):
+    """Complete OAuth flow with authorization code."""
+    from ytmusicianship.auth.oauth_flow import exchange_code
+
+    result = exchange_code(
+        code=payload.code,
+        state=payload.state,
+        oauth_path=settings.ytm_oauth_path,
+    )
+
+    if result["status"] == "ok":
+        yt_client.invalidate()
+        # Verify it works
+        try:
+            await yt_client.get_library_playlists(limit=1)
+        except Exception as e:
+            return {"status": "error", "message": f"Saved credentials but API test failed: {e}"}
+
+    return result
+
+
+class HeadersPayload(BaseModel):
+    headers: str
+
+
+@router.post("/auth/headers")
+async def submit_headers(payload: HeadersPayload):
+    """Submit raw headers or cURL command to create oauth.json"""
+    import json
+    import re
+    import time
+    from hashlib import sha1
+
+    try:
+        # Extract headers from cURL command or raw text
+        headers_text = payload.headers
+        extracted = {}
+
+        # Try to parse as cURL command first
+        if "curl" in headers_text.lower():
+            # Extract -H 'Header: value' patterns
+            header_pattern = r"-H\s+'([^']+)'"
+            matches = re.findall(header_pattern, headers_text)
+            for match in matches:
+                if ":" in match:
+                    key, value = match.split(":", 1)
+                    extracted[key.strip().lower()] = value.strip()
+
+            # Also try to find cookie in -b flag
+            cookie_pattern = r"-b\s+'([^']+)'"
+            cookie_match = re.search(cookie_pattern, headers_text)
+            if cookie_match:
+                extracted["cookie"] = cookie_match.group(1)
+        else:
+            # Parse as raw header lines
+            for line in headers_text.strip().split("\n"):
+                if ":" in line:
+                    key, value = line.split(":", 1)
+                    extracted[key.strip().lower()] = value.strip()
+
+        # Check if we have the required headers
+        cookie = extracted.get("cookie", "")
+        if not cookie:
+            return {"status": "error", "message": "No cookie found in headers"}
+
+        # Extract __Secure-3PAPISID from cookie
+        sapisid_match = re.search(r'__Secure-3PAPISID=([^;\s]+)', cookie)
+        if not sapisid_match:
+            return {"status": "error", "message": "__Secure-3PAPISID not found in cookie"}
+
+        sapisid = sapisid_match.group(1)
+
+        # Generate SAPISIDHASH
+        unix_timestamp = str(int(time.time()))
+        auth_string = f"{sapisid} https://music.youtube.com"
+        sha1_hash = sha1((unix_timestamp + " " + auth_string).encode("utf-8")).hexdigest()
+        authorization = f"SAPISIDHASH {unix_timestamp}_{sha1_hash}"
+
+        # Build auth data
+        auth_data = {
+            "cookie": cookie,
+            "authorization": authorization,
+            "x-goog-authuser": extracted.get("x-goog-authuser", "0"),
+            "origin": extracted.get("origin", "https://music.youtube.com"),
+            "x-origin": extracted.get("x-origin", "https://music.youtube.com"),
+            "referer": extracted.get("referer", "https://music.youtube.com/"),
+            "user-agent": extracted.get("user-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36")
+        }
+
+        # Save to file
+        settings.ytm_oauth_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(settings.ytm_oauth_path, "w") as f:
+            json.dump(auth_data, f, indent=2)
+
+        yt_client.invalidate()
+
+        # Verify it works
+        try:
+            await yt_client.get_library_playlists(limit=1)
+            return {"status": "ok", "message": "Authentication successful"}
+        except Exception as e:
+            return {"status": "error", "message": f"Saved credentials but API test failed: {e}"}
+
+    except Exception as e:
+        return {"status": "error", "message": f"Failed to parse headers: {e}"}
 
 
 # Library
@@ -116,10 +302,21 @@ async def get_playlist_tracks(playlist_id: str, limit: int = Query(0)):
     return {"tracks": await playlist.get_playlist_tracks(playlist_id, limit=limit)}
 
 
+class MultiShuffleRequest(BaseModel):
+    playlist_ids: list[str]
+    target_name: Optional[str] = None
+
+
 @router.post("/playlists/{playlist_id}/shuffle")
 async def shuffle_playlist(playlist_id: str, payload: Optional[ShuffleRequest] = None):
     target_name = payload.target_name if payload else None
-    return await playlist.true_shuffle_playlist(playlist_id, target_name=target_name)
+    return await playlist.true_shuffle_playlist([playlist_id], target_name=target_name)
+
+
+@router.post("/playlists/shuffle")
+async def shuffle_multiple_playlists(payload: MultiShuffleRequest):
+    """Shuffle multiple playlists together into one."""
+    return await playlist.true_shuffle_playlist(payload.playlist_ids, target_name=payload.target_name)
 
 
 @router.post("/playlists/{playlist_id}/tracks")
@@ -132,6 +329,12 @@ async def add_tracks(playlist_id: str, payload: dict):
 async def remove_tracks(playlist_id: str, payload: dict):
     video_ids = payload.get("video_ids", [])
     return await playlist.remove_tracks_from_playlist(playlist_id, video_ids)
+
+
+@router.delete("/playlists/{playlist_id}")
+async def delete_playlist(playlist_id: str):
+    await yt_client.delete_playlist(playlist_id)
+    return {"status": "ok", "message": "Playlist deleted"}
 
 
 @router.post("/playlists/generate")
@@ -171,12 +374,105 @@ async def save_ai_settings(payload: AISettingsPayload):
 
 @router.post("/playlists/musicmatch")
 async def musicmatch_endpoint(payload: MusicMatchRequest):
-    return await playlist.musicmatch(
-        source_playlist_id=payload.source_playlist_id,
-        name=payload.name,
-        description=payload.description,
-        mode=payload.mode,
+    """
+    Generate a playlist using either simple combination or AI-powered selection.
+    """
+    from ytmusicianship.services.ai_musicmatch import (
+        generate_playlist_with_ai,
+        search_tracks_on_ytmusic,
     )
+    from ytmusicianship.services import playlist as playlist_service
+
+    use_ai = payload.use_ai
+
+    if use_ai:
+        # Get playlist names for context
+        playlist_names = []
+        if payload.source_playlist_ids:
+            all_playlists = await playlist.list_playlists(limit=5000)
+            id_to_name = {p["playlist_id"]: p["title"] for p in all_playlists}
+            playlist_names = [id_to_name.get(pid, "Unknown") for pid in payload.source_playlist_ids]
+
+        # Generate AI recommendations
+        try:
+            ai_result = await generate_playlist_with_ai(
+                source_playlists=playlist_names,
+                source_artists=payload.source_artists or [],
+                name=payload.name,
+                description=payload.description,
+                mode=payload.mode,
+                selection_weight=payload.selection_weight,
+            )
+        except RuntimeError as e:
+            error_msg = str(e)
+            # Extract clean message from common API errors
+            if "AI API error:" in error_msg:
+                return {"status": "error", "message": f"AI service error: {error_msg.split(' - ', 1)[-1]}"}
+            return {"status": "error", "message": f"AI generation failed: {error_msg}"}
+        except Exception as e:
+            return {"status": "error", "message": f"Unexpected error during AI generation: {str(e)}"}
+
+        # Search for the tracks on YouTube Music
+        video_ids = await search_tracks_on_ytmusic(ai_result["tracks"])
+
+        if not video_ids:
+            return {"status": "error", "message": "AI generated tracks but none were found on YouTube Music"}
+
+        # Create the playlist with AI-generated or provided name
+        playlist_name = payload.name or ai_result["playlist_name"]
+        playlist_description = payload.description or ai_result["description"]
+
+        new_playlist_id = await playlist_service.create_playlist(
+            name=playlist_name,
+            description=playlist_description,
+        )
+
+        # Add found tracks
+        await playlist_service.add_tracks_to_playlist(new_playlist_id, video_ids[:100])
+
+        return {
+            "status": "ok",
+            "playlist_id": new_playlist_id,
+            "tracks": video_ids,
+            "playlist_name": playlist_name,
+            "ai_reasoning": ai_result.get("reasoning", ""),
+            "ai_generated_name": ai_result["playlist_name"] if not payload.name else None,
+            "vibe_detected": ai_result.get("vibe_detected", ""),
+            "selection_breakdown": ai_result.get("selection_breakdown", {}),
+            "found_tracks": len(video_ids),
+            "requested_tracks": len(ai_result["tracks"]),
+        }
+    else:
+        # Use simple combination mode (existing behavior)
+        return await playlist.musicmatch(
+            source_playlist_ids=payload.source_playlist_ids,
+            source_artists=payload.source_artists,
+            name=payload.name,
+            description=payload.description,
+            mode=payload.mode,
+        )
+
+
+@router.get("/library/artists")
+async def get_liked_artists():
+    """Get unique artists from liked songs."""
+    liked = await library.get_liked_songs(limit=5000)
+    # Extract unique artists
+    artists_map: dict[str, int] = {}
+    for track in liked:
+        artist = track.get("artist", "Unknown")
+        if artist and artist != "Unknown":
+            artists_map[artist] = artists_map.get(artist, 0) + 1
+    # Sort by frequency
+    artists = [{"name": name, "count": count} for name, count in sorted(artists_map.items(), key=lambda x: -x[1])]
+    return {"artists": artists}
+
+
+@router.get("/musicmatch/taste-profile")
+async def get_musicmatch_taste_profile():
+    """Get user's taste profile for MusicMatch display."""
+    from ytmusicianship.services.ai_musicmatch import get_taste_profile
+    return await get_taste_profile()
 
 
 # Rankings
@@ -221,3 +517,17 @@ async def create_job(payload: CreateJobRequest):
 @router.delete("/jobs/{job_id}")
 async def delete_job(job_id: str):
     return await jobs.delete_job(job_id)
+
+
+@router.delete("/auth")
+async def delete_auth():
+    """Delete oauth.json to sign out and allow re-authentication with a different account."""
+    import os
+    try:
+        if settings.ytm_oauth_path.exists():
+            os.remove(settings.ytm_oauth_path)
+            yt_client.invalidate()
+            return {"status": "ok", "message": "Authentication deleted. Please re-authenticate."}
+        return {"status": "ok", "message": "No authentication file found."}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
