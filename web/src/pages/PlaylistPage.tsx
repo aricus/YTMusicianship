@@ -2,12 +2,70 @@ import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { api } from "../api";
 import type { Track } from "../types";
+import {
+  Button,
+  Card,
+  CardHeader,
+  CardContent,
+  Input,
+  Alert,
+  ListItem
+} from "../components/ui";
+
+// Icons
+function MusicIcon({ className = "w-5 h-5" }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3" />
+    </svg>
+  );
+}
+
+function ShuffleIcon({ className = "w-5 h-5" }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+    </svg>
+  );
+}
+
+function SearchIcon({ className = "w-5 h-5" }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+    </svg>
+  );
+}
+
+function PlusIcon({ className = "w-5 h-5" }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+    </svg>
+  );
+}
+
+function TrashIcon({ className = "w-5 h-5" }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+    </svg>
+  );
+}
+
+function ClockIcon({ className = "w-5 h-5" }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+    </svg>
+  );
+}
 
 export default function PlaylistPage() {
   const { playlistId } = useParams<{ playlistId: string }>();
   const [tracks, setTracks] = useState<Track[]>([]);
   const [loading, setLoading] = useState(true);
-  const [message, setMessage] = useState("");
+  const [message, setMessage] = useState<{ text: string; type: "info" | "success" | "error" } | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<Track[]>([]);
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -23,7 +81,7 @@ export default function PlaylistPage() {
       const res = await api.getPlaylistTracks(playlistId!, 0);
       setTracks(res.tracks || []);
     } catch (e: any) {
-      setMessage("Error: " + e.message);
+      setMessage({ text: "Error: " + e.message, type: "error" });
     } finally {
       setLoading(false);
     }
@@ -38,10 +96,10 @@ export default function PlaylistPage() {
   async function handleAdd(videoId: string) {
     try {
       await api.addTracks(playlistId!, [videoId]);
-      setMessage("Track added");
+      setMessage({ text: "Track added", type: "success" });
       await loadTracks();
     } catch (e: any) {
-      setMessage("Add error: " + e.message);
+      setMessage({ text: "Add error: " + e.message, type: "error" });
     }
   }
 
@@ -51,10 +109,10 @@ export default function PlaylistPage() {
     try {
       await api.removeTracks(playlistId!, ids);
       setSelected(new Set());
-      setMessage(`Removed ${ids.length} track(s)`);
+      setMessage({ text: `Removed ${ids.length} track(s)`, type: "success" });
       await loadTracks();
     } catch (e: any) {
-      setMessage("Remove error: " + e.message);
+      setMessage({ text: "Remove error: " + e.message, type: "error" });
     }
   }
 
@@ -65,89 +123,161 @@ export default function PlaylistPage() {
     setSelected(next);
   }
 
-  if (loading) return <div className="text-gray-400">Loading...</div>;
+  async function handleShuffle() {
+    setMessage({ text: "Shuffling playlist...", type: "info" });
+    try {
+      await api.shufflePlaylist(playlistId!);
+      setMessage({ text: "Playlist shuffled!", type: "success" });
+    } catch (e: any) {
+      setMessage({ text: "Shuffle error: " + e.message, type: "error" });
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="flex items-center gap-3 text-zinc-500">
+          <div className="w-5 h-5 border-2 border-violet-500/30 border-t-violet-500 rounded-full animate-spin" />
+          Loading...
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="space-y-4">
+    <div className="max-w-4xl mx-auto space-y-6">
+      {/* Header */}
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">Playlist</h1>
-        <button
-          onClick={() => api.shufflePlaylist(playlistId!).then(() => setMessage("Shuffled!")).catch((e) => setMessage(e.message))}
-          className="rounded bg-emerald-600 px-3 py-2 text-sm font-medium hover:bg-emerald-500"
-        >
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-violet-500/20 to-fuchsia-500/20 flex items-center justify-center">
+            <MusicIcon className="w-6 h-6 text-violet-400" />
+          </div>
+          <div>
+            <h1 className="font-display text-2xl font-bold">Playlist</h1>
+            <p className="text-zinc-500">{tracks.length} tracks</p>
+          </div>
+        </div>
+        <Button onClick={handleShuffle}>
+          <ShuffleIcon className="w-4 h-4 mr-2" />
           True Shuffle
-        </button>
+        </Button>
       </div>
 
+      {/* Message */}
       {message && (
-        <div className="rounded bg-indigo-900/40 border border-indigo-500/40 px-4 py-2 text-indigo-200">
-          {message}
-        </div>
+        <Alert variant={message.type} onClose={() => setMessage(null)}>
+          {message.text}
+        </Alert>
       )}
 
-      <section className="rounded-xl border border-gray-700 bg-gray-800 p-4">
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="text-lg font-semibold">Tracks ({tracks.length})</h2>
-          {selected.size > 0 && (
-            <button
-              onClick={handleRemoveSelected}
-              className="rounded bg-rose-600 px-3 py-1.5 text-sm font-medium hover:bg-rose-500"
-            >
-              Remove {selected.size} selected
-            </button>
-          )}
-        </div>
-        <div className="space-y-2 max-h-96 overflow-auto pr-1">
-          {tracks.map((t) => (
-            <div
-              key={t.video_id + (t.set_video_id || "")}
-              className="flex items-center gap-3 rounded border border-gray-700 bg-gray-900/50 px-3 py-2"
-            >
-              <input
-                type="checkbox"
-                checked={selected.has(t.video_id)}
-                onChange={() => toggleSelection(t.video_id)}
-                className="h-4 w-4 rounded border-gray-600 bg-gray-900 text-indigo-600"
-              />
-              <div className="flex-1 min-w-0">
-                <div className="font-medium truncate">{t.title}</div>
-                <div className="text-xs text-gray-400">{t.artist} {t.duration ? `• ${t.duration}` : ""}</div>
+      <div className="grid lg:grid-cols-3 gap-6">
+        {/* Tracks List */}
+        <div className="lg:col-span-2">
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between w-full">
+                <div className="flex items-center gap-3">
+                  <h2 className="font-display font-semibold">Tracks</h2>
+                  {selected.size > 0 && (
+                    <span className="text-sm text-violet-400">{selected.size} selected</span>
+                  )}
+                </div>
+                {selected.size > 0 && (
+                  <Button
+                    size="sm"
+                    variant="danger"
+                    onClick={handleRemoveSelected}
+                  >
+                    <TrashIcon className="w-4 h-4 mr-2" />
+                    Remove {selected.size}
+                  </Button>
+                )}
               </div>
-            </div>
-          ))}
+            </CardHeader>
+            <CardContent className="p-0">
+              <div className="max-h-[500px] overflow-auto">
+                {tracks.length === 0 ? (
+                  <div className="p-8 text-center">
+                    <p className="text-zinc-500">No tracks in this playlist</p>
+                    <p className="text-sm text-zinc-600 mt-1">Use the search to add songs</p>
+                  </div>
+                ) : (
+                  <div className="divide-y divide-white/[0.04]">
+                    {tracks.map((t) => (
+                      <div
+                        key={t.video_id + (t.set_video_id || "")}
+                        className="flex items-center gap-4 px-6 py-3 hover:bg-white/[0.02] transition-colors"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={selected.has(t.video_id)}
+                          onChange={() => toggleSelection(t.video_id)}
+                          className="w-5 h-5 rounded-lg border-white/20 bg-zinc-950 text-violet-600"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium truncate">{t.title}</p>
+                          <p className="text-sm text-zinc-500">
+                            {t.artist}
+                            {t.duration && <span className="ml-2 text-zinc-600">• {t.duration}</span>}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
         </div>
-      </section>
 
-      <section className="rounded-xl border border-gray-700 bg-gray-800 p-4">
-        <h2 className="text-lg font-semibold mb-3">Add Songs</h2>
-        <div className="flex gap-2">
-          <input
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-            placeholder="Search songs..."
-            className="flex-1 rounded border border-gray-600 bg-gray-900 px-3 py-2 text-sm outline-none focus:border-indigo-500"
-          />
-          <button onClick={handleSearch} className="rounded bg-indigo-600 px-4 py-2 text-sm font-medium hover:bg-indigo-500">
-            Search
-          </button>
-        </div>
-        <div className="mt-3 space-y-2">
-          {searchResults.map((r) => (
-            <div key={r.video_id} className="flex items-center justify-between rounded border border-gray-700 bg-gray-900/50 px-3 py-2">
-              <div className="text-sm">
-                {r.title} — <span className="text-gray-400">{r.artist}</span>
+        {/* Add Songs */}
+        <div>
+          <Card>
+            <CardHeader>
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500/20 to-blue-500/20 flex items-center justify-center">
+                  <SearchIcon className="w-5 h-5 text-cyan-400" />
+                </div>
+                <h2 className="font-display font-semibold">Add Songs</h2>
               </div>
-              <button
-                onClick={() => handleAdd(r.video_id)}
-                className="rounded bg-gray-700 px-2 py-1 text-xs font-medium hover:bg-gray-600"
-              >
-                Add
-              </button>
-            </div>
-          ))}
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex gap-2">
+                <Input
+                  placeholder="Search..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+                />
+                <Button onClick={handleSearch}>
+                  <SearchIcon className="w-4 h-4" />
+                </Button>
+              </div>
+
+              <div className="space-y-2 max-h-[400px] overflow-auto">
+                {searchResults.map((r) => (
+                  <div
+                    key={r.video_id}
+                    className="flex items-center justify-between p-3 rounded-xl bg-zinc-950/50 border border-white/5 hover:border-white/10 transition-colors"
+                  >
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-sm truncate">{r.title}</p>
+                      <p className="text-xs text-zinc-500">{r.artist}</p>
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      onClick={() => handleAdd(r.video_id)}
+                    >
+                      <PlusIcon className="w-4 h-4" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
         </div>
-      </section>
+      </div>
     </div>
   );
 }

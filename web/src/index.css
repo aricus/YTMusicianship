@@ -2,6 +2,25 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Base styles */
+html {
+  scroll-behavior: smooth;
+}
+
 body {
-  @apply bg-gray-900 text-gray-100;
+  @apply antialiased;
+  background-color: #0a0a0f;
+  color: #fafafa;
+}
+
+/* Selection color */
+::selection {
+  background: rgba(168, 85, 247, 0.3);
+  color: white;
+}
+
+/* Focus outline */
+*:focus-visible {
+  outline: 2px solid rgba(168, 85, 247, 0.5);
+  outline-offset: 2px;
 }

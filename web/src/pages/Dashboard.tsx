@@ -2,6 +2,91 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { api } from "../api";
 import type { Playlist, Track } from "../types";
+import {
+  Button,
+  Card,
+  CardHeader,
+  CardContent,
+  Badge,
+  Input,
+  Alert,
+  SectionTitle,
+  EmptyState,
+  ListItem
+} from "../components/ui";
+
+// Icons
+function MusicIcon({ className = "w-5 h-5" }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3" />
+    </svg>
+  );
+}
+
+function TrophyIcon({ className = "w-5 h-5" }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+    </svg>
+  );
+}
+
+function HeartIcon({ className = "w-5 h-5" }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+    </svg>
+  );
+}
+
+function SparklesIcon({ className = "w-5 h-5" }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+    </svg>
+  );
+}
+
+function ExternalLinkIcon({ className = "w-5 h-5" }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+    </svg>
+  );
+}
+
+function TrashIcon({ className = "w-5 h-5" }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+    </svg>
+  );
+}
+
+function ShuffleIcon({ className = "w-5 h-5" }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+    </svg>
+  );
+}
+
+function RefreshIcon({ className = "w-5 h-5" }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+    </svg>
+  );
+}
+
+function SearchIcon({ className = "w-5 h-5" }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+    </svg>
+  );
+}
 
 export default function Dashboard() {
   const [health, setHealth] = useState<{ status: string; authenticated: boolean } | null>(null);
@@ -14,14 +99,10 @@ export default function Dashboard() {
   const [generating, setGenerating] = useState(false);
   const [genName, setGenName] = useState("");
   const [message, setMessage] = useState<{ text: string; type: "info" | "success" | "error"; link?: { url: string; text: string } } | null>(null);
-  // Multi-select for shuffle
   const [selectedForShuffle, setSelectedForShuffle] = useState<Set<string>>(new Set());
   const [shufflingMultiple, setShufflingMultiple] = useState(false);
-  // Headers paste state
   const [headersInput, setHeadersInput] = useState("");
   const [headersSubmitting, setHeadersSubmitting] = useState(false);
-
-  // Sync history state
   const [syncing, setSyncing] = useState(false);
 
   useEffect(() => {
@@ -55,7 +136,6 @@ export default function Dashboard() {
       setSearchResults(res.results || []);
     } catch (err: any) {
       setMessage({ text: "Search error: " + err.message, type: "error" });
-      console.error("[Search] Error:", err);
     }
   }
 
@@ -69,23 +149,18 @@ export default function Dashboard() {
   }
 
   async function handleShuffle(playlistId: string, title: string) {
-    setMessage({ text: `Shuffling ${title}...`, type: "info" });
+    setMessage({ text: `Shuffling "${title}"...`, type: "info" });
     try {
       const res = await api.shufflePlaylist(playlistId);
       const playlistUrl = `https://music.youtube.com/playlist?list=${res.new_playlist_id}`;
       const mismatch = res.expected_count && res.track_count !== res.expected_count;
       const text = mismatch
-        ? `Created "${res.new_playlist_title}" with ${res.track_count} of ${res.expected_count} tracks (some tracks may be unavailable)`
+        ? `Created "${res.new_playlist_title}" with ${res.track_count} of ${res.expected_count} tracks`
         : `Created "${res.new_playlist_title}" with ${res.track_count} tracks!`;
-      setMessage({
-        text,
-        type: "success",
-        link: { url: playlistUrl, text: "Open in YouTube Music" }
-      });
+      setMessage({ text, type: "success", link: { url: playlistUrl, text: "Open in YouTube Music" } });
       await loadAll();
     } catch (e: any) {
       setMessage({ text: "Shuffle error: " + e.message, type: "error" });
-      console.error("[Shuffle] Error:", e);
     }
   }
 
@@ -94,15 +169,13 @@ export default function Dashboard() {
       setMessage({ text: "Select at least 2 playlists to shuffle together", type: "error" });
       return;
     }
-
     setShufflingMultiple(true);
-    setMessage({ text: `Shuffling ${selectedForShuffle.size} playlists together...`, type: "info" });
-
+    setMessage({ text: `Shuffling ${selectedForShuffle.size} playlists...`, type: "info" });
     try {
       const res = await api.shuffleMultiplePlaylists(Array.from(selectedForShuffle));
       const playlistUrl = `https://music.youtube.com/playlist?list=${res.new_playlist_id}`;
       setMessage({
-        text: `Created "${res.new_playlist_title}" with ${res.track_count} tracks from ${res.source_playlist_count} playlists!`,
+        text: `Created "${res.new_playlist_title}" with ${res.track_count} tracks!`,
         type: "success",
         link: { url: playlistUrl, text: "Open in YouTube Music" }
       });
@@ -110,7 +183,6 @@ export default function Dashboard() {
       await loadAll();
     } catch (e: any) {
       setMessage({ text: "Shuffle error: " + e.message, type: "error" });
-      console.error("[Shuffle Multiple] Error:", e);
     } finally {
       setShufflingMultiple(false);
     }
@@ -119,7 +191,7 @@ export default function Dashboard() {
   async function handleGenerate() {
     if (!genName.trim() || searchResults.length === 0) return;
     setGenerating(true);
-    setMessage({ text: "Generating playlist...", type: "info" });
+    setMessage({ text: "Creating playlist...", type: "info" });
     try {
       const ids = searchResults.map((r) => r.video_id).filter(Boolean);
       const res = await api.generatePlaylist(genName, ids, "Generated from search");
@@ -129,7 +201,6 @@ export default function Dashboard() {
       await loadAll();
     } catch (e: any) {
       setMessage({ text: "Generate error: " + e.message, type: "error" });
-      console.error("[Generate] Error:", e);
     } finally {
       setGenerating(false);
     }
@@ -144,18 +215,17 @@ export default function Dashboard() {
       await loadAll();
     } catch (err: any) {
       setMessage({ text: "Upload error: " + err.message, type: "error" });
-      console.error("[Upload] Error:", err);
     }
   }
 
   async function handleHeadersSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!headersInput.trim()) {
-      setMessage({ text: "Error: Please paste the cURL command or headers", type: "error" });
+      setMessage({ text: "Please paste the cURL command or headers", type: "error" });
       return;
     }
     setHeadersSubmitting(true);
-    setMessage({ text: "Authenticating with headers...", type: "info" });
+    setMessage({ text: "Authenticating...", type: "info" });
     try {
       const res = await api.submitHeaders({ headers: headersInput });
       if (res.status === "ok") {
@@ -188,9 +258,7 @@ export default function Dashboard() {
   }
 
   async function handleDeletePlaylist(playlistId: string, title: string) {
-    if (!confirm(`Are you sure you want to delete "${title}"? This cannot be undone.`)) {
-      return;
-    }
+    if (!confirm(`Delete "${title}"? This cannot be undone.`)) return;
     setMessage({ text: `Deleting "${title}"...`, type: "info" });
     try {
       await api.deletePlaylist(playlistId);
@@ -198,289 +266,362 @@ export default function Dashboard() {
       await loadAll();
     } catch (err: any) {
       setMessage({ text: "Delete error: " + err.message, type: "error" });
-      console.error("[Delete] Error:", err);
     }
   }
 
   if (loading) {
-    return <div className="text-gray-400">Loading...</div>;
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="flex items-center gap-3 text-zinc-500">
+          <div className="w-5 h-5 border-2 border-violet-500/30 border-t-violet-500 rounded-full animate-spin" />
+          Loading...
+        </div>
+      </div>
+    );
   }
 
   const isAuthenticated = health?.authenticated;
 
   return (
     <div className="space-y-6">
+      {/* Message Alert */}
       {message && (
-        <div className={`rounded border px-4 py-2 ${
-          message.type === "error"
-            ? "bg-rose-900/40 border-rose-500/40 text-rose-200"
-            : message.type === "success"
-            ? "bg-emerald-900/40 border-emerald-500/40 text-emerald-200"
-            : "bg-indigo-900/40 border-indigo-500/40 text-indigo-200"
-        }`}>
-          <div>{message.text}</div>
-          {message.link && (
-            <a
-              href={message.link.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 mt-2 text-sm underline hover:text-white"
-            >
-              {message.link.text}
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 0 0 3 8.25v10.5A2.25 2.25 0 0 0 5.25 21h10.5A2.25 2.25 0 0 0 18 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
-              </svg>
-            </a>
-          )}
-        </div>
+        <Alert
+          variant={message.type}
+          onClose={() => setMessage(null)}
+        >
+          <div className="flex-1">
+            <p>{message.text}</p>
+            {message.link && (
+              <a
+                href={message.link.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 mt-2 text-sm font-medium underline opacity-80 hover:opacity-100"
+              >
+                {message.link.text}
+                <ExternalLinkIcon className="w-4 h-4" />
+              </a>
+            )}
+          </div>
+        </Alert>
       )}
 
-      <section className="rounded-xl border border-gray-700 bg-gray-800 p-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-semibold">Dashboard</h1>
-            <div className="mt-1 text-sm text-gray-400">
-              {isAuthenticated ? (
-                <span className="text-emerald-400">Authenticated with YouTube Music</span>
-              ) : (
-                <span className="text-rose-400">Not authenticated</span>
-              )}
-            </div>
-          </div>
-        </div>
-      </section>
-
+      {/* Auth Required State */}
       {!isAuthenticated ? (
-        // Authentication required view
-        <div className="space-y-6">
-          <section className="rounded-xl border border-rose-700/50 bg-rose-900/20 p-6">
-            <h2 className="text-xl font-semibold mb-4 text-rose-200">Authentication Required</h2>
-            <p className="text-gray-300 mb-6">
-              To use YTMusicianship, you need to authenticate with YouTube Music. Choose one of the methods below:
-            </p>
-
-            {/* Method 1: Paste Browser Headers */}
-            <div className="mb-8 p-4 rounded-lg bg-emerald-900/20 border border-emerald-700">
-              <h3 className="text-lg font-medium mb-3 text-emerald-300">Paste Browser Headers (Recommended)</h3>
-              <p className="text-sm text-gray-400 mb-4">
-                Copy a request directly from your browser's Network tab. This is the most reliable method.
-              </p>
-
-              <div className="mb-4 p-3 rounded bg-gray-900 border border-gray-700 text-sm text-gray-300">
-                <p className="font-medium text-gray-200 mb-2">How to authenticate:</p>
-                <ol className="list-decimal list-inside space-y-1 text-gray-400">
-                  <li>Go to <a href="https://music.youtube.com" target="_blank" rel="noopener noreferrer" className="text-indigo-400 hover:underline">music.youtube.com</a> and sign in</li>
-                  <li>Press F12 → Network tab</li>
-                  <li>Click on any request (like "browse" or "search")</li>
-                  <li>Right-click the request → Copy → Copy as cURL (bash)</li>
-                  <li>Paste the entire cURL command below</li>
-                </ol>
+        <div className="max-w-2xl mx-auto">
+          <Card className="border-rose-500/20">
+            <CardContent className="text-center py-12">
+              <div className="w-20 h-20 mx-auto mb-6 rounded-2xl bg-gradient-to-br from-rose-500/20 to-orange-500/20 flex items-center justify-center">
+                <MusicIcon className="w-10 h-10 text-rose-400" />
               </div>
-
-              <form onSubmit={handleHeadersSubmit} className="space-y-3">
-                <div>
-                  <label className="block text-xs text-gray-400 mb-1">cURL Command or Raw Headers</label>
-                  <textarea
-                    value={headersInput}
-                    onChange={(e) => setHeadersInput(e.target.value)}
-                    placeholder="curl 'https://music.youtube.com/youtubei/v1/browse' -H 'cookie: ...' -H 'authorization: ...'"
-                    rows={6}
-                    className="w-full rounded border border-gray-600 bg-gray-900 px-3 py-2 text-sm outline-none focus:border-indigo-500 font-mono text-xs"
-                  />
-                </div>
-                <button
-                  type="submit"
-                  disabled={headersSubmitting || !headersInput.trim()}
-                  className="w-full rounded bg-emerald-600 px-4 py-2 text-sm font-medium hover:bg-emerald-500 disabled:opacity-50"
-                >
-                  {headersSubmitting ? "Authenticating..." : "Authenticate"}
-                </button>
-              </form>
-            </div>
-
-            {/* Alternative: Upload oauth.json */}
-            <div className="p-4 rounded-lg bg-gray-800 border border-gray-700">
-              <h3 className="text-lg font-medium mb-3 text-gray-300">Alternative: Upload oauth.json</h3>
-              <p className="text-sm text-gray-400 mb-4">
-                If you have an oauth.json file from a previous ytmusicapi setup, you can upload it directly.
+              <h2 className="font-display text-3xl font-bold mb-3">Connect to YouTube Music</h2>
+              <p className="text-zinc-400 mb-8 max-w-md mx-auto">
+                To use YTMusicianship, you need to authenticate with your YouTube Music account.
               </p>
-              <label className="cursor-pointer inline-flex items-center rounded bg-indigo-600 px-4 py-2 text-sm font-medium hover:bg-indigo-500">
-                Upload oauth.json
-                <input type="file" className="hidden" onChange={handleAuthUpload} />
-              </label>
-            </div>
-          </section>
+
+              {/* Auth Method */}
+              <form onSubmit={handleHeadersSubmit} className="text-left space-y-4">
+                <div className="bg-zinc-950/50 rounded-xl p-4 space-y-3">
+                  <h3 className="font-semibold text-zinc-300 flex items-center gap-2">
+                    <span className="w-6 h-6 rounded-full bg-violet-500/20 text-violet-400 flex items-center justify-center text-sm">1</span>
+                    Copy headers from your browser
+                  </h3>
+                  <ol className="text-sm text-zinc-500 space-y-1 ml-8">
+                    <li>Go to <a href="https://music.youtube.com" target="_blank" rel="noopener noreferrer" className="text-violet-400 hover:underline">music.youtube.com</a> and sign in</li>
+                    <li>Press F12 → Network tab</li>
+                    <li>Click on any request, then right-click → Copy as cURL (bash)</li>
+                    <li>Paste below</li>
+                  </ol>
+                </div>
+
+                <textarea
+                  value={headersInput}
+                  onChange={(e) => setHeadersInput(e.target.value)}
+                  placeholder="curl 'https://music.youtube.com/...' -H 'cookie: ...'"
+                  rows={5}
+                  className="w-full bg-zinc-950 border border-white/10 rounded-xl px-4 py-3 text-sm font-mono text-zinc-300 placeholder:text-zinc-600 focus:outline-none focus:border-violet-500/50 focus:ring-2 focus:ring-violet-500/20"
+                />
+
+                <Button
+                  type="submit"
+                  isLoading={headersSubmitting}
+                  disabled={!headersInput.trim()}
+                  className="w-full"
+                >
+                  Authenticate
+                </Button>
+
+                <div className="relative my-6">
+                  <div className="absolute inset-0 flex items-center">
+                    <div className="w-full border-t border-white/10" />
+                  </div>
+                  <div className="relative flex justify-center text-xs uppercase">
+                    <span className="bg-zinc-900 px-2 text-zinc-500">Or</span>
+                  </div>
+                </div>
+
+                <label className="block">
+                  <input type="file" className="hidden" onChange={handleAuthUpload} />
+                  <div className="w-full py-3 px-4 rounded-xl border border-dashed border-white/20 text-center text-sm text-zinc-400 hover:border-violet-500/50 hover:text-zinc-300 transition-colors cursor-pointer">
+                    Upload oauth.json file
+                  </div>
+                </label>
+              </form>
+            </CardContent>
+          </Card>
         </div>
       ) : (
-        // Authenticated view - show all features
         <>
-          <div className="grid gap-6 md:grid-cols-2">
-            <section className="rounded-xl border border-gray-700 bg-gray-800 p-4">
-              <div className="flex items-center justify-between mb-3">
-                <h2 className="text-lg font-semibold">Your Playlists</h2>
-                {selectedForShuffle.size > 0 && (
-                  <button
-                    onClick={() => setSelectedForShuffle(new Set())}
-                    className="text-xs text-gray-400 hover:text-gray-300"
-                  >
-                    Clear selection
-                  </button>
-                )}
-              </div>
-              {selectedForShuffle.size >= 2 && (
-                <div className="mb-3 p-2 rounded bg-emerald-900/30 border border-emerald-700/50 flex items-center justify-between">
-                  <span className="text-sm text-emerald-200">
-                    {selectedForShuffle.size} playlists selected
-                  </span>
-                  <button
-                    onClick={handleShuffleMultiple}
-                    disabled={shufflingMultiple}
-                    className="rounded bg-emerald-600 px-3 py-1 text-xs font-medium hover:bg-emerald-500 disabled:opacity-50"
-                  >
-                    {shufflingMultiple ? "Shuffling..." : "Shuffle Selected Together"}
-                  </button>
-                </div>
-              )}
-              <div className="space-y-2 max-h-96 overflow-auto pr-1">
-                {playlists.length === 0 && <div className="text-gray-400 text-sm">No playlists found.</div>}
-                {playlists.map((pl) => (
-                  <div key={pl.playlist_id} className="flex items-center justify-between rounded border border-gray-700 bg-gray-900/50 px-3 py-2">
-                    <div className="flex items-center gap-2 min-w-0 flex-1">
-                      <input
-                        type="checkbox"
-                        checked={selectedForShuffle.has(pl.playlist_id)}
-                        onChange={() => toggleShuffleSelection(pl.playlist_id)}
-                        className="rounded border-gray-600 shrink-0"
-                        title="Select for multi-shuffle"
-                      />
-                      <div className="min-w-0">
-                        <div className="font-medium truncate">{pl.title}</div>
-                        <div className="text-xs text-gray-400">{pl.count ? `${pl.count} tracks` : ""}</div>
-                      </div>
-                    </div>
-                    <div className="flex gap-2 shrink-0">
-                      <button
-                        onClick={() => handleShuffle(pl.playlist_id, pl.title)}
-                        className="rounded bg-emerald-600 px-2 py-1 text-xs font-medium hover:bg-emerald-500"
-                      >
-                        Shuffle
-                      </button>
-                      <Link
-                        to={`/playlist/${encodeURIComponent(pl.playlist_id)}`}
-                        className="rounded bg-gray-700 px-2 py-1 text-xs font-medium hover:bg-gray-600"
-                      >
-                        Open
-                      </Link>
-                      {pl.title !== "Liked Music" && (
-                        <button
-                          onClick={() => handleDeletePlaylist(pl.playlist_id, pl.title)}
-                          className="rounded bg-rose-900/50 px-2 py-1 text-xs font-medium text-rose-300 hover:bg-rose-900"
-                          title="Delete playlist"
-                        >
-                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
-                          </svg>
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </section>
-
-            <section className="rounded-xl border border-gray-700 bg-gray-800 p-4">
-              <div className="flex items-center justify-between mb-3">
-                <h2 className="text-lg font-semibold">Top Songs</h2>
-                <button
-                  onClick={handleSyncHistory}
-                  disabled={syncing}
-                  className="rounded bg-indigo-600 px-3 py-1 text-xs font-medium hover:bg-indigo-500 disabled:opacity-50"
-                >
-                  {syncing ? "Syncing..." : "Sync History"}
-                </button>
-              </div>
-              <div className="space-y-2 max-h-96 overflow-auto pr-1">
-                {topSongs.length === 0 && <div className="text-gray-400 text-sm">No rankings yet. Sync history to build rankings.</div>}
-                {topSongs.map((s, idx) => (
-                  <div key={idx} className="flex items-center justify-between rounded border border-gray-700 bg-gray-900/50 px-3 py-2">
-                    <div className="min-w-0">
-                      <div className="font-medium truncate">{s.entity_name}</div>
-                      <div className="text-xs text-gray-400">Score {s.score} • Plays {s.play_count}</div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </section>
+          {/* Header */}
+          <div className="flex items-center justify-between">
+            <div>
+              <Badge variant="success">Authenticated</Badge>
+              <p className="mt-2 text-zinc-400">Ready to shuffle, discover, and create.</p>
+            </div>
+            <Link to="/musicmatch">
+              <Button>
+                <SparklesIcon className="w-4 h-4 mr-2" />
+                MusicMatch
+              </Button>
+            </Link>
           </div>
 
-          <section className="rounded-xl border border-gray-700 bg-gray-800 p-4">
-            <h2 className="text-lg font-semibold mb-3">Quick Playlist Generator</h2>
-            <div className="flex flex-col gap-3 md:flex-row">
-              <input
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-                placeholder="Search songs to add to a new playlist..."
-                className="flex-1 rounded border border-gray-600 bg-gray-900 px-3 py-2 text-sm outline-none focus:border-indigo-500"
-              />
-              <button onClick={handleSearch} className="rounded bg-indigo-600 px-4 py-2 text-sm font-medium hover:bg-indigo-500">
-                Search
-              </button>
-            </div>
-
-            {searchResults.length > 0 && (
-              <div className="mt-3 space-y-2">
-                <div className="text-sm text-gray-400">Search results:</div>
-                {searchResults.map((r) => (
-                  <div key={r.video_id} className="flex items-center justify-between rounded border border-gray-700 bg-gray-900/50 px-3 py-2">
-                    <div className="text-sm">
-                      {r.title} — <span className="text-gray-400">{r.artist}</span>
+          {/* Main Grid */}
+          <div className="grid lg:grid-cols-3 gap-6">
+            {/* Playlists Column */}
+            <div className="lg:col-span-2 space-y-6">
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500/20 to-fuchsia-500/20 flex items-center justify-center">
+                      <MusicIcon className="w-5 h-5 text-violet-400" />
+                    </div>
+                    <div>
+                      <h3 className="font-display font-semibold text-lg">Your Playlists</h3>
+                      <p className="text-sm text-zinc-500">{playlists.length} playlists</p>
                     </div>
                   </div>
-                ))}
-                <div className="flex gap-2 mt-2">
-                  <input
-                    value={genName}
-                    onChange={(e) => setGenName(e.target.value)}
-                    placeholder="Playlist name"
-                    className="flex-1 rounded border border-gray-600 bg-gray-900 px-3 py-2 text-sm outline-none focus:border-indigo-500"
-                  />
-                  <button
-                    onClick={handleGenerate}
-                    disabled={generating || !genName.trim()}
-                    className="rounded bg-emerald-600 px-4 py-2 text-sm font-medium hover:bg-emerald-500 disabled:opacity-50"
-                  >
-                    {generating ? "Creating..." : "Create Playlist"}
-                  </button>
-                </div>
-              </div>
-            )}
-          </section>
-
-          <section className="rounded-xl border border-gray-700 bg-gray-800 p-4">
-            <h2 className="text-lg font-semibold mb-3">Recent Likes</h2>
-            <div className="space-y-2 max-h-64 overflow-auto pr-1">
-              {liked.map((t) => (
-                <div key={t.video_id} className="flex items-center justify-between text-sm rounded border border-gray-700 bg-gray-900/50 px-3 py-2">
-                  <div className="min-w-0">
-                    <div className="truncate">{t.title}</div>
-                    <div className="text-gray-400 text-xs truncate">{t.artist}</div>
+                  {selectedForShuffle.size >= 2 && (
+                    <Button
+                      size="sm"
+                      onClick={handleShuffleMultiple}
+                      isLoading={shufflingMultiple}
+                    >
+                      <ShuffleIcon className="w-4 h-4 mr-2" />
+                      Shuffle {selectedForShuffle.size}
+                    </Button>
+                  )}
+                </CardHeader>
+                <CardContent className="p-0">
+                  {selectedForShuffle.size > 0 && (
+                    <div className="px-6 py-3 bg-violet-500/5 border-b border-white/5 flex items-center justify-between">
+                      <span className="text-sm text-violet-300">
+                        {selectedForShuffle.size} selected
+                      </span>
+                      <button
+                        onClick={() => setSelectedForShuffle(new Set())}
+                        className="text-sm text-zinc-500 hover:text-zinc-300"
+                      >
+                        Clear
+                      </button>
+                    </div>
+                  )}
+                  <div className="max-h-[500px] overflow-auto">
+                    {playlists.length === 0 ? (
+                      <EmptyState
+                        icon={<MusicIcon className="w-8 h-8" />}
+                        title="No playlists"
+                        description="Create your first playlist to get started"
+                      />
+                    ) : (
+                      <div className="divide-y divide-white/[0.04]">
+                        {playlists.map((pl) => (
+                          <div
+                            key={pl.playlist_id}
+                            className="flex items-center gap-4 px-6 py-4 hover:bg-white/[0.02] transition-colors group"
+                          >
+                            <input
+                              type="checkbox"
+                              checked={selectedForShuffle.has(pl.playlist_id)}
+                              onChange={() => toggleShuffleSelection(pl.playlist_id)}
+                              className="w-5 h-5 rounded-lg border-white/20 bg-zinc-950 text-violet-600 focus:ring-violet-500/20"
+                            />
+                            <div className="flex-1 min-w-0">
+                              <p className="font-medium truncate">{pl.title}</p>
+                              <p className="text-sm text-zinc-500">{pl.count ? `${pl.count} tracks` : "Empty"}</p>
+                            </div>
+                            <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <Button
+                                size="sm"
+                                variant="secondary"
+                                onClick={() => handleShuffle(pl.playlist_id, pl.title)}
+                              >
+                                <ShuffleIcon className="w-4 h-4" />
+                              </Button>
+                              <Link to={`/playlist/${encodeURIComponent(pl.playlist_id)}`}>
+                                <Button size="sm" variant="secondary">Open</Button>
+                              </Link>
+                              {pl.title !== "Liked Music" && (
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => handleDeletePlaylist(pl.playlist_id, pl.title)}
+                                  className="text-rose-400 hover:text-rose-300"
+                                >
+                                  <TrashIcon className="w-4 h-4" />
+                                </Button>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
-                  <a
-                    href={`https://music.youtube.com/watch?v=${t.video_id}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="shrink-0 ml-2 text-indigo-400 hover:text-indigo-300"
-                    title="Open in YouTube Music"
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 0 0 3 8.25v10.5A2.25 2.25 0 0 0 5.25 21h10.5A2.25 2.25 0 0 0 18 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
-                    </svg>
-                  </a>
-                </div>
-              ))}
+                </CardContent>
+              </Card>
+
+              {/* Quick Generator */}
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500/20 to-blue-500/20 flex items-center justify-center">
+                      <SearchIcon className="w-5 h-5 text-cyan-400" />
+                    </div>
+                    <div>
+                      <h3 className="font-display font-semibold text-lg">Quick Playlist Generator</h3>
+                      <p className="text-sm text-zinc-500">Search and create instantly</p>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex gap-3">
+                    <div className="flex-1">
+                      <Input
+                        placeholder="Search for songs..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+                      />
+                    </div>
+                    <Button onClick={handleSearch}>
+                      <SearchIcon className="w-4 h-4" />
+                    </Button>
+                  </div>
+
+                  {searchResults.length > 0 && (
+                    <div className="space-y-3">
+                      <div className="text-sm text-zinc-500">Search results:</div>
+                      <div className="space-y-2">
+                        {searchResults.map((r) => (
+                          <ListItem key={r.video_id}>
+                            <div className="flex-1 min-w-0">
+                              <p className="font-medium truncate">{r.title}</p>
+                              <p className="text-sm text-zinc-500">{r.artist}</p>
+                            </div>
+                          </ListItem>
+                        ))}
+                      </div>
+                      <div className="flex gap-3 pt-2">
+                        <Input
+                          placeholder="Playlist name"
+                          value={genName}
+                          onChange={(e) => setGenName(e.target.value)}
+                        />
+                        <Button
+                          onClick={handleGenerate}
+                          isLoading={generating}
+                          disabled={!genName.trim()}
+                        >
+                          Create
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
             </div>
-          </section>
+
+            {/* Sidebar */}
+            <div className="space-y-6">
+              {/* Top Songs */}
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center justify-between w-full">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500/20 to-orange-500/20 flex items-center justify-center">
+                        <TrophyIcon className="w-5 h-5 text-amber-400" />
+                      </div>
+                      <h3 className="font-display font-semibold text-lg">Top Songs</h3>
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      onClick={handleSyncHistory}
+                      isLoading={syncing}
+                    >
+                      <RefreshIcon className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </CardHeader>
+                <CardContent className="p-0">
+                  <div className="max-h-[300px] overflow-auto">
+                    {topSongs.length === 0 ? (
+                      <div className="p-6 text-center">
+                        <p className="text-sm text-zinc-500">No rankings yet</p>
+                        <p className="text-xs text-zinc-600 mt-1">Sync history to build rankings</p>
+                      </div>
+                    ) : (
+                      <div className="divide-y divide-white/[0.04]">
+                        {topSongs.slice(0, 10).map((s, i) => (
+                          <div key={i} className="flex items-center gap-3 px-6 py-3">
+                            <span className="w-6 text-center text-sm font-bold text-zinc-600">{i + 1}</span>
+                            <div className="flex-1 min-w-0">
+                              <p className="font-medium text-sm truncate">{s.entity_name}</p>
+                              <p className="text-xs text-zinc-500">{s.play_count} plays</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Recent Likes */}
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-rose-500/20 to-pink-500/20 flex items-center justify-center">
+                      <HeartIcon className="w-5 h-5 text-rose-400" />
+                    </div>
+                    <h3 className="font-display font-semibold text-lg">Recent Likes</h3>
+                  </div>
+                </CardHeader>
+                <CardContent className="p-0">
+                  <div className="max-h-[300px] overflow-auto">
+                    <div className="divide-y divide-white/[0.04]">
+                      {liked.slice(0, 10).map((t) => (
+                        <a
+                          key={t.video_id}
+                          href={`https://music.youtube.com/watch?v=${t.video_id}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-3 px-6 py-3 hover:bg-white/[0.02] transition-colors group"
+                        >
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium text-sm truncate">{t.title}</p>
+                            <p className="text-xs text-zinc-500 truncate">{t.artist}</p>
+                          </div>
+                          <ExternalLinkIcon className="w-4 h-4 text-zinc-600 group-hover:text-zinc-400" />
+                        </a>
+                      ))}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
         </>
       )}
     </div>

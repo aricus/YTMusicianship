@@ -1,7 +1,67 @@
 import { useEffect, useState, useMemo } from "react";
-import { Link } from "react-router-dom";
 import { api } from "../api";
 import type { Playlist } from "../types";
+import {
+  Button,
+  Card,
+  CardHeader,
+  CardContent,
+  Badge,
+  Input,
+  Alert,
+  SectionTitle,
+  Toggle,
+  Slider
+} from "../components/ui";
+
+// Icons
+function SparklesIcon({ className = "w-5 h-5" }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+    </svg>
+  );
+}
+
+function MusicIcon({ className = "w-5 h-5" }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3" />
+    </svg>
+  );
+}
+
+function UserIcon({ className = "w-5 h-5" }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+    </svg>
+  );
+}
+
+function ExternalLinkIcon({ className = "w-5 h-5" }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+    </svg>
+  );
+}
+
+function ChevronDownIcon({ className = "w-5 h-5" }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+    </svg>
+  );
+}
+
+function ChevronUpIcon({ className = "w-5 h-5" }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+    </svg>
+  );
+}
 
 interface Artist {
   name: string;
@@ -42,23 +102,14 @@ export default function MusicMatchPage() {
     selectionBreakdown?: SelectionBreakdown;
   } | null>(null);
 
-  // AI settings
   const [aiSettings, setAiSettings] = useState<AISettings | null>(null);
   const [useAI, setUseAI] = useState(false);
-
-  // Taste Profile
   const [tasteProfile, setTasteProfile] = useState<TasteProfile | null>(null);
   const [showTasteProfile, setShowTasteProfile] = useState(false);
-
-  // Selection states
   const [selectedPlaylists, setSelectedPlaylists] = useState<Set<string>>(new Set());
   const [selectedArtists, setSelectedArtists] = useState<Set<string>>(new Set());
-
-  // Search states
   const [playlistSearch, setPlaylistSearch] = useState("");
   const [artistSearch, setArtistSearch] = useState("");
-
-  // Generation settings
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [mode, setMode] = useState<"exact" | "search" | "auto">("auto");
@@ -91,7 +142,6 @@ export default function MusicMatchPage() {
 
   const aiConfigured = aiSettings?.ai_base_url && aiSettings?.ai_api_key;
 
-  // Filtered lists based on search
   const filteredPlaylists = useMemo(() => {
     if (!playlistSearch.trim()) return playlists;
     const q = playlistSearch.toLowerCase();
@@ -139,9 +189,8 @@ export default function MusicMatchPage() {
   }
 
   async function handleGenerate() {
-    // When not using AI, name is required
     if (!useAI && !name.trim()) {
-      setMessage({ text: "Please enter a playlist name or enable AI to auto-generate one", type: "error" });
+      setMessage({ text: "Please enter a playlist name or enable AI", type: "error" });
       return;
     }
 
@@ -156,7 +205,10 @@ export default function MusicMatchPage() {
     }
 
     setGenerating(true);
-    setMessage({ text: useAI ? "AI is analyzing your taste and generating recommendations... (this may take 1-3 minutes)" : "Generating playlist...", type: "info" });
+    setMessage({
+      text: useAI ? "AI is analyzing your taste and generating recommendations..." : "Generating playlist...",
+      type: "info"
+    });
 
     try {
       const res = await api.musicmatch({
@@ -181,7 +233,6 @@ export default function MusicMatchPage() {
           vibeDetected: res.vibe_detected,
           selectionBreakdown: res.selection_breakdown,
         });
-        // Clear selections
         setSelectedPlaylists(new Set());
         setSelectedArtists(new Set());
         setName("");
@@ -197,363 +248,408 @@ export default function MusicMatchPage() {
   }
 
   if (loading) {
-    return <div className="text-gray-400">Loading...</div>;
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="flex items-center gap-3 text-zinc-500">
+          <div className="w-5 h-5 border-2 border-violet-500/30 border-t-violet-500 rounded-full animate-spin" />
+          Loading...
+        </div>
+      </div>
+    );
   }
 
   const totalSelected = selectedPlaylists.size + selectedArtists.size;
 
   return (
-    <div className="space-y-6">
-      {message && (
-        <div className={`rounded border px-4 py-2 ${
-          message.type === "error"
-            ? "bg-rose-900/40 border-rose-500/40 text-rose-200"
-            : message.type === "success"
-            ? "bg-emerald-900/40 border-emerald-500/40 text-emerald-200"
-            : "bg-indigo-900/40 border-indigo-500/40 text-indigo-200"
-        }`}>
-          <div>{message.text}</div>
-          {message.aiGeneratedName && (
-            <div className="text-sm mt-1 italic">
-              AI named this playlist: "{message.aiGeneratedName}"
-            </div>
-          )}
-          {message.vibeDetected && (
-            <div className="text-sm mt-2 pt-2 border-t border-emerald-500/30">
-              <span className="font-medium">Vibe Detected:</span>{" "}
-              <span className="italic text-emerald-200">{message.vibeDetected}</span>
-            </div>
-          )}
-          {message.selectionBreakdown && (
-            <div className="text-sm mt-2 pt-2 border-t border-emerald-500/30">
-              <span className="font-medium">Selection Breakdown:</span>
-              <div className="mt-1">• {message.selectionBreakdown.from_direct_selections} from your selections</div>
-              <div>• {message.selectionBreakdown.from_taste_profile} from taste profile exploration</div>
-              {message.selectionBreakdown.vibe_elements && message.selectionBreakdown.vibe_elements.length > 0 && (
-                <div className="mt-1 text-xs text-gray-400">
-                  Vibe elements: {message.selectionBreakdown.vibe_elements.join(", ")}
-                </div>
-              )}
-              <div className="mt-1 text-xs text-gray-400">
-                Key influences: {message.selectionBreakdown.key_influences?.join(", ") || "N/A"}
-              </div>
-            </div>
-          )}
-          {message.aiReasoning && (
-            <div className="text-sm mt-2 pt-2 border-t border-emerald-500/30">
-              <span className="font-medium">AI Reasoning:</span> {message.aiReasoning}
-            </div>
-          )}
-          {message.link && (
-            <a
-              href={message.link.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 mt-2 text-sm underline hover:text-white"
-            >
-              {message.link.text}
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 0 0 3 8.25v10.5A2.25 2.25 0 0 0 5.25 21h10.5A2.25 2.25 0 0 0 18 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
-              </svg>
-            </a>
-          )}
+    <div className="max-w-5xl mx-auto space-y-6">
+      {/* Header */}
+      <div className="text-center py-8">
+        <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-violet-500/20 to-fuchsia-500/20 mb-4">
+          <SparklesIcon className="w-8 h-8 text-fuchsia-400" />
         </div>
-      )}
-
-      <section className="rounded-xl border border-gray-700 bg-gray-800 p-6">
-        <h1 className="text-2xl font-semibold mb-2">MusicMatch</h1>
-        <p className="text-gray-400 mb-6">
-          Generate playlists by combining your favorite playlists and artists. Enable AI to analyze the "vibe" or "feel" of your selections and find songs that match that emotional quality.
+        <h1 className="font-display text-4xl font-bold bg-gradient-to-r from-white via-violet-200 to-fuchsia-200 bg-clip-text text-transparent">
+          MusicMatch
+        </h1>
+        <p className="mt-2 text-zinc-400 max-w-lg mx-auto">
+          AI-powered playlist generation that captures the "vibe" of your selections.
+          Discover songs that match the feeling, not just the genre.
         </p>
+      </div>
 
-        {/* AI Toggle */}
-        <div className="mb-6 p-4 rounded-lg bg-indigo-900/20 border border-indigo-700/50">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${useAI ? "bg-indigo-600" : "bg-gray-600"}`}>
-                <button
-                  onClick={() => setUseAI(!useAI)}
-                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${useAI ? "translate-x-6" : "translate-x-1"}`}
-                />
-              </div>
-              <div>
-                <div className="font-medium text-indigo-200">Use AI Recommendations</div>
-                <div className="text-xs text-gray-400">
-                  {useAI
-                    ? "AI analyzes the 'vibe' of your selections to find songs that match the feeling"
-                    : "Simple shuffle and combine from selected sources"}
-                </div>
-              </div>
-            </div>
-            {!aiConfigured && (
-              <Link
-                to="/settings"
-                className="text-xs text-rose-400 hover:text-rose-300 underline"
-              >
-                AI not configured →
-              </Link>
-            )}
-          </div>
-        </div>
+      {/* Message */}
+      {message && (
+        <Alert variant={message.type} onClose={() => setMessage(null)}>
+          <div className="space-y-3 w-full">
+            <p>{message.text}</p>
 
-        {/* Taste Profile Toggle */}
-        {useAI && tasteProfile && (
-          <div className="mb-6">
-            <button
-              onClick={() => setShowTasteProfile(!showTasteProfile)}
-              className="flex items-center gap-2 text-sm text-indigo-400 hover:text-indigo-300"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
-                <path strokeLinecap="round" strokeLinejoin="round" d={showTasteProfile ? "M19.5 8.25l-7.5 7.5-7.5-7.5" : "M8.25 4.5l7.5 7.5-7.5 7.5"} />
-              </svg>
-              {showTasteProfile ? "Hide Taste Profile" : "Show Taste Profile (what AI knows about you)"}
-            </button>
-
-            {showTasteProfile && (
-              <div className="mt-3 p-4 rounded-lg bg-gray-900 border border-gray-700">
-                <h3 className="text-sm font-medium mb-3 text-gray-300">Your Taste Profile</h3>
-                <div className="grid gap-4 md:grid-cols-3 text-sm">
-                  <div>
-                    <div className="text-xs text-gray-500 mb-1">Top Artists (by plays)</div>
-                    <div className="space-y-1">
-                      {tasteProfile.top_artists.slice(0, 5).map((a, i) => (
-                        <div key={a.name} className="flex justify-between">
-                          <span className="truncate">{i + 1}. {a.name}</span>
-                          <span className="text-gray-500 text-xs">{Math.round(a.score)}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                  <div>
-                    <div className="text-xs text-gray-500 mb-1">Top Songs</div>
-                    <div className="space-y-1">
-                      {tasteProfile.top_songs.slice(0, 5).map((s, i) => (
-                        <div key={s.name} className="truncate" title={s.name}>
-                          {i + 1}. {s.name.split(" — ")[0]}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                  <div>
-                    <div className="text-xs text-gray-500 mb-1">Liked Artists ({tasteProfile.total_liked_songs} total likes)</div>
-                    <div className="space-y-1">
-                      {tasteProfile.liked_artists.slice(0, 5).map((a, i) => (
-                        <div key={a.name} className="flex justify-between">
-                          <span className="truncate">{i + 1}. {a.name}</span>
-                          <span className="text-gray-500 text-xs">{a.count}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-                <p className="text-xs text-gray-500 mt-3">
-                  This data helps the AI understand your taste. You can influence the recommendations by selecting specific playlists/artists below.
+            {message.vibeDetected && (
+              <div className="pt-3 border-t border-white/10">
+                <p className="text-sm font-medium text-zinc-400 mb-1">Vibe Detected</p>
+                <p className="text-lg font-semibold italic text-fuchsia-300">
+                  "{message.vibeDetected}"
                 </p>
               </div>
             )}
-          </div>
-        )}
 
-        {/* Selection Weight Slider - AI Mode Only */}
-        {useAI && (
-          <div className="mb-6 p-4 rounded-lg bg-gray-900 border border-gray-700">
-            <div className="flex items-center justify-between mb-2">
-              <label className="text-sm font-medium text-gray-300">Recommendation Focus</label>
-              <span className="text-xs text-indigo-400">{selectionWeight}% Selections / {100 - selectionWeight}% Discovery</span>
+            {message.selectionBreakdown && (
+              <div className="pt-3 border-t border-white/10">
+                <p className="text-sm font-medium text-zinc-400 mb-2">How it was made</p>
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <span className="text-zinc-500">From selections:</span>
+                    <span className="ml-2">{message.selectionBreakdown.from_direct_selections}</span>
+                  </div>
+                  <div>
+                    <span className="text-zinc-500">From taste profile:</span>
+                    <span className="ml-2">{message.selectionBreakdown.from_taste_profile}</span>
+                  </div>
+                </div>
+                {message.selectionBreakdown.vibe_elements && message.selectionBreakdown.vibe_elements.length > 0 && (
+                  <div className="mt-2">
+                    <span className="text-zinc-500 text-sm">Vibe elements: </span>
+                    <span className="text-fuchsia-300">
+                      {message.selectionBreakdown.vibe_elements.join(", ")}
+                    </span>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {message.aiReasoning && (
+              <div className="pt-3 border-t border-white/10">
+                <p className="text-sm font-medium text-zinc-400 mb-1">AI Reasoning</p>
+                <p className="text-sm text-zinc-300">{message.aiReasoning}</p>
+              </div>
+            )}
+
+            {message.link && (
+              <a
+                href={message.link.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 mt-2 text-violet-400 hover:text-violet-300 font-medium"
+              >
+                {message.link.text}
+                <ExternalLinkIcon className="w-4 h-4" />
+              </a>
+            )}
+          </div>
+        </Alert>
+      )}
+
+      {/* AI Toggle */}
+      <Card className="border-violet-500/20">
+        <CardContent className="py-6">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className={`w-12 h-12 rounded-xl flex items-center justify-center transition-colors ${
+                useAI ? 'bg-violet-500/20' : 'bg-zinc-800'
+              }`}>
+                <SparklesIcon className={`w-6 h-6 transition-colors ${useAI ? 'text-violet-400' : 'text-zinc-500'}`} />
+              </div>
+              <div>
+                <h3 className="font-display font-semibold text-lg">AI Recommendations</h3>
+                <p className="text-sm text-zinc-500">
+                  {useAI
+                    ? "AI will analyze the vibe of your selections for intelligent recommendations"
+                    : "Simple shuffle and combine from selected sources"}
+                </p>
+              </div>
             </div>
-            <input
-              type="range"
-              min="0"
-              max="100"
+            <Toggle checked={useAI} onChange={setUseAI} />
+          </div>
+
+          {!aiConfigured && useAI && (
+            <div className="mt-4 p-4 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-200 text-sm">
+              AI not configured. Go to Settings to set up your AI provider.
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Taste Profile */}
+      {useAI && tasteProfile && (
+        <Card>
+          <button
+            onClick={() => setShowTasteProfile(!showTasteProfile)}
+            className="w-full"
+          >
+            <CardHeader>
+              <div className="flex items-center justify-between w-full">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500/20 to-orange-500/20 flex items-center justify-center">
+                    <UserIcon className="w-5 h-5 text-amber-400" />
+                  </div>
+                  <div>
+                    <h3 className="font-display font-semibold">Taste Profile</h3>
+                    <p className="text-sm text-zinc-500">What the AI knows about you</p>
+                  </div>
+                </div>
+                {showTasteProfile ? (
+                  <ChevronUpIcon className="w-5 h-5 text-zinc-500" />
+                ) : (
+                  <ChevronDownIcon className="w-5 h-5 text-zinc-500" />
+                )}
+              </div>
+            </CardHeader>
+          </button>
+
+          {showTasteProfile && (
+            <CardContent>
+              <div className="grid md:grid-cols-3 gap-6">
+                <div>
+                  <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-3">Top Artists</p>
+                  <div className="space-y-2">
+                    {tasteProfile.top_artists.slice(0, 5).map((a, i) => (
+                      <div key={a.name} className="flex items-center justify-between text-sm">
+                        <span className="text-zinc-300">{i + 1}. {a.name}</span>
+                        <span className="text-zinc-600">{Math.round(a.score)}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-3">Top Songs</p>
+                  <div className="space-y-2">
+                    {tasteProfile.top_songs.slice(0, 5).map((s, i) => (
+                      <div key={s.name} className="text-sm text-zinc-300 truncate" title={s.name}>
+                        {i + 1}. {s.name.split(" — ")[0]}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-3">
+                    Liked Artists ({tasteProfile.total_liked_songs})
+                  </p>
+                  <div className="space-y-2">
+                    {tasteProfile.liked_artists.slice(0, 5).map((a, i) => (
+                      <div key={a.name} className="flex items-center justify-between text-sm">
+                        <span className="text-zinc-300">{i + 1}. {a.name}</span>
+                        <span className="text-zinc-600">{a.count}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          )}
+        </Card>
+      )}
+
+      {/* Selection Weight */}
+      {useAI && (
+        <Card>
+          <CardContent className="py-6">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h3 className="font-display font-semibold">Recommendation Focus</h3>
+                <p className="text-sm text-zinc-500">
+                  Balance between your explicit selections and taste profile exploration
+                </p>
+              </div>
+              <Badge>
+                {selectionWeight}% Selections / {100 - selectionWeight}% Discovery
+              </Badge>
+            </div>
+
+            <Slider
+              min={0}
+              max={100}
               value={selectionWeight}
-              onChange={(e) => setSelectionWeight(Number(e.target.value))}
-              className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-indigo-500"
+              onChange={setSelectionWeight}
             />
-            <div className="flex justify-between text-xs text-gray-500 mt-1">
+
+            <div className="flex justify-between mt-2 text-xs text-zinc-500">
               <span>More Discovery</span>
               <span>Balanced</span>
               <span>Strict Selections</span>
             </div>
-            <p className="text-xs text-gray-400 mt-2">
+
+            <p className="mt-4 text-sm text-zinc-400">
               {selectionWeight < 30 && "AI will explore broadly based on your general taste, with light influence from your selections."}
               {selectionWeight >= 30 && selectionWeight < 70 && "AI balances your explicit selections with discoveries from your taste profile."}
               {selectionWeight >= 70 && "AI heavily prioritizes your selected playlists/artists, staying close to what you picked."}
             </p>
-          </div>
-        )}
+          </CardContent>
+        </Card>
+      )}
 
-        <div className="grid gap-6 md:grid-cols-2 mb-6">
-          {/* Playlists Selection */}
-          <div className="p-4 rounded-lg bg-gray-900 border border-gray-700">
-            <div className="flex items-center justify-between mb-3">
-              <h2 className="text-lg font-medium">Playlists</h2>
+      {/* Selection Grid */}
+      <div className="grid md:grid-cols-2 gap-6">
+        {/* Playlists */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between w-full">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500/20 to-fuchsia-500/20 flex items-center justify-center">
+                  <MusicIcon className="w-5 h-5 text-violet-400" />
+                </div>
+                <div>
+                  <h3 className="font-display font-semibold">Playlists</h3>
+                  <p className="text-sm text-zinc-500">{selectedPlaylists.size} selected</p>
+                </div>
+              </div>
               <div className="flex gap-2">
-                <button
-                  onClick={selectAllPlaylists}
-                  className="text-xs text-indigo-400 hover:text-indigo-300"
-                >
-                  All
-                </button>
-                <button
-                  onClick={deselectAllPlaylists}
-                  className="text-xs text-gray-500 hover:text-gray-400"
-                >
-                  None
-                </button>
+                <Button size="sm" variant="ghost" onClick={selectAllPlaylists}>All</Button>
+                <Button size="sm" variant="ghost" onClick={deselectAllPlaylists}>None</Button>
               </div>
             </div>
-            <input
-              type="text"
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <Input
+              placeholder="Search playlists..."
               value={playlistSearch}
               onChange={(e) => setPlaylistSearch(e.target.value)}
-              placeholder="Search playlists..."
-              className="w-full rounded border border-gray-600 bg-gray-800 px-3 py-2 text-sm outline-none focus:border-indigo-500 mb-3"
             />
-            <div className="space-y-1 max-h-64 overflow-auto">
+            <div className="max-h-64 overflow-auto space-y-2">
               {filteredPlaylists.length === 0 && (
-                <div className="text-gray-500 text-sm">No playlists found</div>
+                <p className="text-sm text-zinc-500 text-center py-4">No playlists found</p>
               )}
               {filteredPlaylists.map((pl) => (
                 <label
                   key={pl.playlist_id}
-                  className="flex items-center gap-2 p-2 rounded hover:bg-gray-800 cursor-pointer"
+                  className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all ${
+                    selectedPlaylists.has(pl.playlist_id)
+                      ? 'bg-violet-500/10 border-violet-500/30'
+                      : 'bg-zinc-950/50 border-white/5 hover:border-white/10'
+                  }`}
                 >
                   <input
                     type="checkbox"
                     checked={selectedPlaylists.has(pl.playlist_id)}
                     onChange={() => togglePlaylist(pl.playlist_id)}
-                    className="rounded border-gray-600"
+                    className="w-5 h-5 rounded-lg border-white/20 bg-zinc-950 text-violet-600"
                   />
                   <div className="flex-1 min-w-0">
-                    <div className="text-sm truncate">{pl.title}</div>
-                    <div className="text-xs text-gray-500">{pl.count} tracks</div>
+                    <p className="font-medium truncate">{pl.title}</p>
+                    <p className="text-xs text-zinc-500">{pl.count} tracks</p>
                   </div>
                 </label>
               ))}
             </div>
-            <div className="mt-2 text-xs text-gray-500">
-              {selectedPlaylists.size} selected
-            </div>
-          </div>
+          </CardContent>
+        </Card>
 
-          {/* Artists Selection */}
-          <div className="p-4 rounded-lg bg-gray-900 border border-gray-700">
-            <div className="flex items-center justify-between mb-3">
-              <h2 className="text-lg font-medium">Artists from Likes</h2>
+        {/* Artists */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between w-full">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500/20 to-blue-500/20 flex items-center justify-center">
+                  <UserIcon className="w-5 h-5 text-cyan-400" />
+                </div>
+                <div>
+                  <h3 className="font-display font-semibold">Artists from Likes</h3>
+                  <p className="text-sm text-zinc-500">{selectedArtists.size} selected</p>
+                </div>
+              </div>
               <div className="flex gap-2">
-                <button
-                  onClick={selectAllArtists}
-                  className="text-xs text-indigo-400 hover:text-indigo-300"
-                >
-                  All
-                </button>
-                <button
-                  onClick={deselectAllArtists}
-                  className="text-xs text-gray-500 hover:text-gray-400"
-                >
-                  None
-                </button>
+                <Button size="sm" variant="ghost" onClick={selectAllArtists}>All</Button>
+                <Button size="sm" variant="ghost" onClick={deselectAllArtists}>None</Button>
               </div>
             </div>
-            <input
-              type="text"
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <Input
+              placeholder="Search artists..."
               value={artistSearch}
               onChange={(e) => setArtistSearch(e.target.value)}
-              placeholder="Search artists..."
-              className="w-full rounded border border-gray-600 bg-gray-800 px-3 py-2 text-sm outline-none focus:border-indigo-500 mb-3"
             />
-            <div className="space-y-1 max-h-64 overflow-auto">
+            <div className="max-h-64 overflow-auto space-y-2">
               {filteredArtists.length === 0 && (
-                <div className="text-gray-500 text-sm">No artists found</div>
+                <p className="text-sm text-zinc-500 text-center py-4">No artists found</p>
               )}
               {filteredArtists.map((artist) => (
                 <label
                   key={artist.name}
-                  className="flex items-center gap-2 p-2 rounded hover:bg-gray-800 cursor-pointer"
+                  className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all ${
+                    selectedArtists.has(artist.name)
+                      ? 'bg-cyan-500/10 border-cyan-500/30'
+                      : 'bg-zinc-950/50 border-white/5 hover:border-white/10'
+                  }`}
                 >
                   <input
                     type="checkbox"
                     checked={selectedArtists.has(artist.name)}
                     onChange={() => toggleArtist(artist.name)}
-                    className="rounded border-gray-600"
+                    className="w-5 h-5 rounded-lg border-white/20 bg-zinc-950 text-cyan-600"
                   />
                   <div className="flex-1 min-w-0">
-                    <div className="text-sm truncate">{artist.name}</div>
-                    <div className="text-xs text-gray-500">{artist.count} liked songs</div>
+                    <p className="font-medium truncate">{artist.name}</p>
+                    <p className="text-xs text-zinc-500">{artist.count} liked songs</p>
                   </div>
                 </label>
               ))}
             </div>
-            <div className="mt-2 text-xs text-gray-500">
-              {selectedArtists.size} selected
-            </div>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
+      </div>
 
-        {/* Generation Settings */}
-        <div className="p-4 rounded-lg bg-gray-900 border border-gray-700">
-          <h2 className="text-lg font-medium mb-4">Playlist Settings</h2>
-          <div className="grid gap-4 md:grid-cols-2 mb-4">
-            <div>
-              <label className="block text-xs text-gray-400 mb-1">
-                Playlist Name {useAI ? "(optional - AI will suggest)" : "*"}
-              </label>
-              <input
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder={useAI ? "Leave blank for AI-generated name" : "My Mix"}
-                className="w-full rounded border border-gray-600 bg-gray-800 px-3 py-2 text-sm outline-none focus:border-indigo-500"
-              />
-            </div>
-            <div>
-              <label className="block text-xs text-gray-400 mb-1">Description (optional)</label>
-              <input
-                type="text"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                placeholder="AI-generated playlist"
-                className="w-full rounded border border-gray-600 bg-gray-800 px-3 py-2 text-sm outline-none focus:border-indigo-500"
-              />
-            </div>
+      {/* Settings & Generate */}
+      <Card>
+        <CardContent className="py-6">
+          <div className="grid md:grid-cols-2 gap-6 mb-6">
+            <Input
+              label={useAI ? "Playlist Name (optional)" : "Playlist Name *"}
+              placeholder={useAI ? "Leave blank for AI-generated name" : "My Mix"}
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+            />
+            <Input
+              label="Description (optional)"
+              placeholder="AI-generated playlist"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+            />
           </div>
 
-          <div className="mb-4">
-            <label className="block text-xs text-gray-400 mb-2">Mode</label>
+          <div className="mb-6">
+            <p className="text-sm font-medium text-zinc-400 mb-3">Mode</p>
             <div className="flex gap-2">
               {(["exact", "search", "auto"] as const).map((m) => (
                 <button
                   key={m}
                   onClick={() => setMode(m)}
-                  className={`rounded px-3 py-1 text-xs font-medium capitalize ${
-                    mode === m ? "bg-indigo-600 text-white" : "bg-gray-700 text-gray-300 hover:bg-gray-600"
+                  className={`px-4 py-2 rounded-xl text-sm font-medium capitalize transition-all ${
+                    mode === m
+                      ? 'bg-violet-600 text-white'
+                      : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700'
                   }`}
                 >
                   {m}
                 </button>
               ))}
             </div>
-            <p className="text-xs text-gray-500 mt-1">
+            <p className="mt-2 text-sm text-zinc-500">
               {useAI
                 ? "Exact = match your taste closely • Search = discover new similar songs • Auto = balance"
-                : "Exact = songs from sources • Search = not applicable without AI • Auto = simple mix"}
+                : "Exact = songs from sources • Auto = simple mix"}
             </p>
           </div>
 
           <div className="flex items-center justify-between">
-            <div className="text-sm text-gray-400">
+            <p className="text-zinc-400">
               {totalSelected === 0 ? "Select at least one source" : `${totalSelected} source(s) selected`}
-            </div>
-            <button
+            </p>
+            <Button
               onClick={handleGenerate}
-              disabled={generating || totalSelected === 0 || (!useAI && !name.trim())}
-              className="rounded bg-emerald-600 px-6 py-2 text-sm font-medium hover:bg-emerald-500 disabled:opacity-50"
+              isLoading={generating}
+              disabled={totalSelected === 0 || (!useAI && !name.trim())}
+              size="lg"
             >
-              {generating ? (useAI ? "AI is thinking..." : "Generating...") : (useAI ? "Generate with AI" : "Generate Playlist")}
-            </button>
+              {useAI ? (
+                <>
+                  <SparklesIcon className="w-5 h-5 mr-2" />
+                  Generate with AI
+                </>
+              ) : (
+                "Generate Playlist"
+              )}
+            </Button>
           </div>
-        </div>
-      </section>
+        </CardContent>
+      </Card>
     </div>
   );
 }
