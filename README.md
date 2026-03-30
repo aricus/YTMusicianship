@@ -6,8 +6,6 @@
 [![MCP](https://img.shields.io/badge/MCP-compatible-purple)](https://modelcontextprotocol.io)
 [![Python](https://img.shields.io/badge/python-3.12-blue?logo=python)](https://python.org)
 
-<img width="2206" height="1681" alt="image" src="https://github.com/user-attachments/assets/263b1221-ce17-4053-a595-40655e43b53f" />
-
 ---
 
 ## What is YTMusicianship?
@@ -43,6 +41,9 @@ It is a self-hosted service that runs on your machine (inside Docker) and gives 
 ## Features
 
 ### 🎲 True Shuffle
+
+<img width="2259" height="1678" alt="image" src="https://github.com/user-attachments/assets/ea01c85e-e1f4-426a-bc35-2b68226d38cc" />
+
 Fetch your **entire** playlist, shuffle it client-side with Fisher-Yates, and create a new playlist with the full shuffled order. No more 50-song limits!
 
 When shuffling a single playlist that you own, the new shuffled playlist will have the same name as the original (plus "(Shuffled)"), and the original is cleaned up automatically. Your music stays organized without duplicate playlists cluttering your library.
