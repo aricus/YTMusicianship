@@ -8,21 +8,34 @@ from ytmusicianship.yt_client import yt_client
 
 
 async def sync_history(limit: Optional[int] = None) -> dict:
-    """Fetch latest history and persist play events."""
+    """Fetch latest history and persist play events, avoiding duplicates."""
     history = await get_history()
     if limit:
         history = history[:limit]
 
     async with AsyncSessionLocal() as session:
+        # Get existing video_ids to avoid duplicates
+        result = await session.execute(select(PlayEvent.video_id))
+        existing_ids = {row[0] for row in result.all()}
+
         added = 0
+        skipped = 0
         now = datetime.datetime.utcnow()
-        # Add each play event with a slight time offset to preserve order
+        # Spread songs over time for more realistic recency scoring
+        # Assume 200 songs span ~14 days (adjust based on history length)
+        total_days = 14
+        hours_per_song = (total_days * 24) / max(len(history), 1)
+
         for idx, track in enumerate(history):
             video_id = track.get("video_id")
             if not video_id:
                 continue
-            # Offset by index seconds to preserve play order
-            played_at = now - datetime.timedelta(seconds=idx)
+            # Skip if already in database
+            if video_id in existing_ids:
+                skipped += 1
+                continue
+            # Spread songs across time for varied recency scores
+            played_at = now - datetime.timedelta(hours=idx * hours_per_song)
             event = PlayEvent(
                 video_id=video_id,
                 title=track.get("title"),
@@ -32,10 +45,11 @@ async def sync_history(limit: Optional[int] = None) -> dict:
                 played_at=played_at,
             )
             session.add(event)
+            existing_ids.add(video_id)  # Add to set to prevent duplicates within this batch
             added += 1
 
         await session.commit()
-        return {"synced": added, "total_history_fetched": len(history)}
+        return {"synced": added, "skipped": skipped, "total_history_fetched": len(history)}
 
 
 async def compute_rankings() -> dict:

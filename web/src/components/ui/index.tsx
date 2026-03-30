@@ -17,7 +17,7 @@ export function Button({
   disabled,
   ...props
 }: ButtonProps) {
-  const baseStyles = 'relative inline-flex items-center justify-center font-semibold rounded-xl transition-all duration-300 overflow-hidden'
+  const baseStyles = 'relative inline-flex items-center justify-center gap-2 font-semibold rounded-xl transition-all duration-300 overflow-hidden whitespace-nowrap'
 
   const variants = {
     primary: 'bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white hover:from-violet-500 hover:to-fuchsia-500 hover:shadow-lg hover:shadow-violet-500/25 hover:-translate-y-0.5',
@@ -43,7 +43,7 @@ export function Button({
           <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
         </span>
       )}
-      <span className={isLoading ? 'opacity-0' : ''}>{children}</span>
+      <span className={`inline-flex items-center gap-2 ${isLoading ? 'opacity-0' : ''}`}>{children}</span>
     </button>
   )
 }

@@ -56,6 +56,12 @@ export const api = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ name, track_ids: trackIds, description }),
     }),
+  generateVibePlaylist: (vibe: string, name?: string) =>
+    fetchJson(`${API_BASE}/playlists/generate-vibe`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ vibe, name }),
+    }),
   search: (query: string, filter = "songs", limit = 20) =>
     fetchJson(`${API_BASE}/library/search?query=${encodeURIComponent(query)}&filter=${filter}&limit=${limit}`),
   getLikedSongs: (limit?: number) =>
@@ -64,9 +70,12 @@ export const api = {
 
   getTopSongs: (limit = 20) => fetchJson(`${API_BASE}/rankings/songs?limit=${limit}`),
   getTopArtists: (limit = 20) => fetchJson(`${API_BASE}/rankings/artists?limit=${limit}`),
+  generateRankingsInsights: () =>
+    fetchJson(`${API_BASE}/rankings/insights`, { method: "POST" }),
+  getRankingsInsights: () => fetchJson(`${API_BASE}/rankings/insights`),
 
   getJobs: () => fetchJson(`${API_BASE}/jobs`),
-  createJob: (payload: { name: string; action: string; cron: string; target_playlist_id?: string }) =>
+  createJob: (payload: { name: string; action: string; cron: string; target_playlist_id?: string; config_json?: string }) =>
     fetchJson(`${API_BASE}/jobs`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { api } from "../api";
-import type { Playlist, Track } from "../types";
+import type { Playlist } from "../types";
 import {
   Button,
   Card,
@@ -10,8 +10,7 @@ import {
   Badge,
   Input,
   Alert,
-  EmptyState,
-  ListItem
+  EmptyState
 } from "../components/ui";
 
 // Icons
@@ -71,38 +70,23 @@ function ShuffleIcon({ className = "w-5 h-5" }: { className?: string }) {
   );
 }
 
-function RefreshIcon({ className = "w-5 h-5" }: { className?: string }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-    </svg>
-  );
-}
-
-function SearchIcon({ className = "w-5 h-5" }: { className?: string }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-    </svg>
-  );
-}
 
 export default function Dashboard() {
   const [health, setHealth] = useState<{ status: string; authenticated: boolean } | null>(null);
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
-  const [liked, setLiked] = useState<Track[]>([]);
-  const [topSongs, setTopSongs] = useState<any[]>([]);
+  const [liked, setLiked] = useState<any[]>([]);
+  const [topArtists, setTopArtists] = useState<{name: string; count: number}[]>([]);
   const [loading, setLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [searchResults, setSearchResults] = useState<Track[]>([]);
-  const [generating, setGenerating] = useState(false);
-  const [genName, setGenName] = useState("");
+  const [vibeQuery, setVibeQuery] = useState("");
+  const [vibeName, setVibeName] = useState("");
+  const [generatingVibe, setGeneratingVibe] = useState(false);
+  const [vibeInterpretation, setVibeInterpretation] = useState<string | null>(null);
+  const [vibeReasoning, setVibeReasoning] = useState<string | null>(null);
   const [message, setMessage] = useState<{ text: string; type: "info" | "success" | "error"; link?: { url: string; text: string } } | null>(null);
   const [selectedForShuffle, setSelectedForShuffle] = useState<Set<string>>(new Set());
   const [shufflingMultiple, setShufflingMultiple] = useState(false);
   const [headersInput, setHeadersInput] = useState("");
   const [headersSubmitting, setHeadersSubmitting] = useState(false);
-  const [syncing, setSyncing] = useState(false);
 
   useEffect(() => {
     loadAll();
@@ -111,16 +95,16 @@ export default function Dashboard() {
   async function loadAll() {
     setLoading(true);
     try {
-      const [h, pl, l, ts] = await Promise.all([
+      const [h, pl, l, likedArtistsRes] = await Promise.all([
         api.health(),
         api.getPlaylists(),
-        api.getLikedSongs(20),
-        api.getTopSongs(10),
+        api.getLikedSongs(100),
+        api.getLikedArtists(),
       ]);
       setHealth(h);
       setPlaylists(pl.playlists || []);
       setLiked(l.tracks || []);
-      setTopSongs(ts.rankings || []);
+      setTopArtists(likedArtistsRes.artists?.slice(0, 10) || []);
     } catch (e: any) {
       setMessage({ text: "Error loading data: " + e.message, type: "error" });
     } finally {
@@ -128,13 +112,33 @@ export default function Dashboard() {
     }
   }
 
-  async function handleSearch() {
-    if (!searchQuery.trim()) return;
+  async function handleVibeGenerate() {
+    if (!vibeQuery.trim()) return;
+    setGeneratingVibe(true);
+    setVibeInterpretation(null);
+    setVibeReasoning(null);
+    setMessage({ text: "AI is interpreting your vibe and generating a 100-song playlist...", type: "info" });
     try {
-      const res = await api.search(searchQuery, "songs", 10);
-      setSearchResults(res.results || []);
+      const res = await api.generateVibePlaylist(vibeQuery, vibeName.trim() || undefined);
+      if (res.status === "ok") {
+        const playlistUrl = `https://music.youtube.com/playlist?list=${res.playlist_id}`;
+        setMessage({
+          text: `Created "${res.playlist_name}" with ${res.found_tracks} of ${res.requested_tracks} tracks!`,
+          type: "success",
+          link: { url: playlistUrl, text: "Open in YouTube Music" }
+        });
+        setVibeInterpretation(res.vibe_interpretation || null);
+        setVibeReasoning(res.ai_reasoning || null);
+        setVibeQuery("");
+        setVibeName("");
+        await loadAll();
+      } else {
+        setMessage({ text: "Error: " + (res.message || "Unknown error"), type: "error" });
+      }
     } catch (err: any) {
-      setMessage({ text: "Search error: " + err.message, type: "error" });
+      setMessage({ text: "Error: " + err.message, type: "error" });
+    } finally {
+      setGeneratingVibe(false);
     }
   }
 
@@ -187,23 +191,6 @@ export default function Dashboard() {
     }
   }
 
-  async function handleGenerate() {
-    if (!genName.trim() || searchResults.length === 0) return;
-    setGenerating(true);
-    setMessage({ text: "Creating playlist...", type: "info" });
-    try {
-      const ids = searchResults.map((r) => r.video_id).filter(Boolean);
-      const res = await api.generatePlaylist(genName, ids, "Generated from search");
-      setMessage({ text: `Created playlist: ${res.playlist_id}`, type: "success" });
-      setGenName("");
-      setSearchResults([]);
-      await loadAll();
-    } catch (e: any) {
-      setMessage({ text: "Generate error: " + e.message, type: "error" });
-    } finally {
-      setGenerating(false);
-    }
-  }
 
   async function handleAuthUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -241,21 +228,6 @@ export default function Dashboard() {
     }
   }
 
-  async function handleSyncHistory() {
-    setSyncing(true);
-    setMessage({ text: "Syncing history...", type: "info" });
-    try {
-      const res = await api.syncHistory();
-      const syncedCount = res.sync_history?.synced ?? res.sync_history ?? 0;
-      setMessage({ text: `Synced ${syncedCount} tracks!`, type: "success" });
-      await loadAll();
-    } catch (err: any) {
-      setMessage({ text: "Sync error: " + err.message, type: "error" });
-    } finally {
-      setSyncing(false);
-    }
-  }
-
   async function handleDeletePlaylist(playlistId: string, title: string) {
     if (!confirm(`Delete "${title}"? This cannot be undone.`)) return;
     setMessage({ text: `Deleting "${title}"...`, type: "info" });
@@ -268,18 +240,41 @@ export default function Dashboard() {
     }
   }
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="flex items-center gap-3 text-zinc-500">
-          <div className="w-5 h-5 border-2 border-violet-500/30 border-t-violet-500 rounded-full animate-spin" />
-          Loading...
-        </div>
+  // Skeleton components
+  const SkeletonItem = () => (
+    <div className="flex items-center gap-4 px-6 py-4 animate-pulse">
+      <div className="w-5 h-5 rounded-lg bg-zinc-800" />
+      <div className="flex-1 min-w-0 space-y-2">
+        <div className="h-4 bg-zinc-800 rounded w-3/4" />
+        <div className="h-3 bg-zinc-800/50 rounded w-1/2" />
       </div>
-    );
-  }
+    </div>
+  );
 
-  const isAuthenticated = health?.authenticated;
+  const SkeletonHeader = () => (
+    <div className="flex items-center gap-3 animate-pulse">
+      <div className="w-10 h-10 rounded-xl bg-zinc-800" />
+      <div className="space-y-2">
+        <div className="h-5 bg-zinc-800 rounded w-32" />
+        <div className="h-3 bg-zinc-800/50 rounded w-20" />
+      </div>
+    </div>
+  );
+
+  const SkeletonSidebarItem = () => (
+    <div className="flex items-center gap-3 px-6 py-3 animate-pulse">
+      <div className="w-6 h-4 bg-zinc-800 rounded" />
+      <div className="flex-1 min-w-0 space-y-2">
+        <div className="h-4 bg-zinc-800 rounded w-3/4" />
+        <div className="h-3 bg-zinc-800/50 rounded w-1/2" />
+      </div>
+    </div>
+  );
+
+  // Only show auth form if we know for sure user is not authenticated
+  const showAuthForm = health !== null && !health.authenticated;
+  // Show dashboard layout while loading or when authenticated
+  const showDashboard = !showAuthForm;
 
   return (
     <div className="space-y-6">
@@ -307,7 +302,7 @@ export default function Dashboard() {
       )}
 
       {/* Auth Required State */}
-      {!isAuthenticated ? (
+      {showAuthForm && (
         <div className="max-w-2xl mx-auto">
           <Card className="border-rose-500/20">
             <CardContent className="text-center py-12">
@@ -370,7 +365,10 @@ export default function Dashboard() {
             </CardContent>
           </Card>
         </div>
-      ) : (
+      )}
+
+      {/* Authenticated Dashboard */}
+      {showDashboard && (
         <>
           {/* Header */}
           <div className="flex items-center justify-between">
@@ -392,16 +390,20 @@ export default function Dashboard() {
             <div className="lg:col-span-2 space-y-6">
               <Card>
                 <CardHeader>
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500/20 to-fuchsia-500/20 flex items-center justify-center">
-                      <MusicIcon className="w-5 h-5 text-violet-400" />
+                  {loading ? (
+                    <SkeletonHeader />
+                  ) : (
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500/20 to-fuchsia-500/20 flex items-center justify-center">
+                        <MusicIcon className="w-5 h-5 text-violet-400" />
+                      </div>
+                      <div>
+                        <h3 className="font-display font-semibold text-lg">Your Playlists</h3>
+                        <p className="text-sm text-zinc-500">{playlists.length} playlists</p>
+                      </div>
                     </div>
-                    <div>
-                      <h3 className="font-display font-semibold text-lg">Your Playlists</h3>
-                      <p className="text-sm text-zinc-500">{playlists.length} playlists</p>
-                    </div>
-                  </div>
-                  {selectedForShuffle.size >= 2 && (
+                  )}
+                  {!loading && selectedForShuffle.size >= 2 && (
                     <Button
                       size="sm"
                       onClick={handleShuffleMultiple}
@@ -413,7 +415,7 @@ export default function Dashboard() {
                   )}
                 </CardHeader>
                 <CardContent className="p-0">
-                  {selectedForShuffle.size > 0 && (
+                  {!loading && selectedForShuffle.size > 0 && (
                     <div className="px-6 py-3 bg-violet-500/5 border-b border-white/5 flex items-center justify-between">
                       <span className="text-sm text-violet-300">
                         {selectedForShuffle.size} selected
@@ -427,7 +429,15 @@ export default function Dashboard() {
                     </div>
                   )}
                   <div className="max-h-[500px] overflow-auto">
-                    {playlists.length === 0 ? (
+                    {loading ? (
+                      <div className="divide-y divide-white/[0.04]">
+                        <SkeletonItem />
+                        <SkeletonItem />
+                        <SkeletonItem />
+                        <SkeletonItem />
+                        <SkeletonItem />
+                      </div>
+                    ) : playlists.length === 0 ? (
                       <EmptyState
                         icon={<MusicIcon className="w-8 h-8" />}
                         title="No playlists"
@@ -448,7 +458,10 @@ export default function Dashboard() {
                             />
                             <div className="flex-1 min-w-0">
                               <p className="font-medium truncate">{pl.title}</p>
-                              <p className="text-sm text-zinc-500">{pl.count ? `${pl.count} tracks` : "Empty"}</p>
+                              <p className="text-sm text-zinc-500">{
+                                pl.count ? `${pl.count} tracks` :
+                                pl.title === "Liked Music" ? "Auto Generated" : "Empty"
+                              }</p>
                             </div>
                             <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                               <Button
@@ -480,104 +493,106 @@ export default function Dashboard() {
                 </CardContent>
               </Card>
 
-              {/* Quick Generator */}
+              {/* AI Vibe Generator */}
               <Card>
                 <CardHeader>
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500/20 to-blue-500/20 flex items-center justify-center">
-                      <SearchIcon className="w-5 h-5 text-cyan-400" />
+                      <SparklesIcon className="w-5 h-5 text-cyan-400" />
                     </div>
                     <div>
-                      <h3 className="font-display font-semibold text-lg">Quick Playlist Generator</h3>
-                      <p className="text-sm text-zinc-500">Search and create instantly</p>
+                      <h3 className="font-display font-semibold text-lg">AI Vibe Generator</h3>
+                      <p className="text-sm text-zinc-500">Describe a feeling, get a 100-song playlist</p>
                     </div>
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="flex gap-3">
-                    <div className="flex-1">
-                      <Input
-                        placeholder="Search for songs..."
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-                      />
-                    </div>
-                    <Button onClick={handleSearch}>
-                      <SearchIcon className="w-4 h-4" />
-                    </Button>
+                  <div className="space-y-3">
+                    <textarea
+                      placeholder="Describe a vibe, mood, or feeling... e.g., 'late night drive through the city', 'introspective rainy morning', 'high energy workout'"
+                      value={vibeQuery}
+                      onChange={(e) => setVibeQuery(e.target.value)}
+                      rows={3}
+                      className="w-full bg-zinc-950 border border-white/10 rounded-xl px-4 py-3 text-sm text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:border-violet-500/50 focus:ring-2 focus:ring-violet-500/20 resize-none"
+                    />
+                    <Input
+                      placeholder="Playlist name (optional - AI will generate one)"
+                      value={vibeName}
+                      onChange={(e) => setVibeName(e.target.value)}
+                    />
                   </div>
 
-                  {searchResults.length > 0 && (
-                    <div className="space-y-3">
-                      <div className="text-sm text-zinc-500">Search results:</div>
-                      <div className="space-y-2">
-                        {searchResults.map((r) => (
-                          <ListItem key={r.video_id}>
-                            <div className="flex-1 min-w-0">
-                              <p className="font-medium truncate">{r.title}</p>
-                              <p className="text-sm text-zinc-500">{r.artist}</p>
-                            </div>
-                          </ListItem>
-                        ))}
-                      </div>
-                      <div className="flex gap-3 pt-2">
-                        <Input
-                          placeholder="Playlist name"
-                          value={genName}
-                          onChange={(e) => setGenName(e.target.value)}
-                        />
-                        <Button
-                          onClick={handleGenerate}
-                          isLoading={generating}
-                          disabled={!genName.trim()}
-                        >
-                          Create
-                        </Button>
-                      </div>
+                  {vibeInterpretation && (
+                    <div className="p-4 rounded-xl bg-violet-500/10 border border-violet-500/20 space-y-2">
+                      <p className="text-sm font-medium text-violet-300">AI Interpretation</p>
+                      <p className="text-sm text-zinc-300 italic">"{vibeInterpretation}"</p>
+                      {vibeReasoning && (
+                        <p className="text-xs text-zinc-500 mt-2">{vibeReasoning}</p>
+                      )}
                     </div>
                   )}
+
+                  <Button
+                    onClick={handleVibeGenerate}
+                    isLoading={generatingVibe}
+                    disabled={!vibeQuery.trim()}
+                    className="w-full"
+                  >
+                    {generatingVibe ? (
+                      "AI is crafting your playlist..."
+                    ) : (
+                      <>
+                        <SparklesIcon className="w-4 h-4 mr-2" />
+                        Generate 100-Song Playlist
+                      </>
+                    )}
+                  </Button>
                 </CardContent>
               </Card>
             </div>
 
             {/* Sidebar */}
             <div className="space-y-6">
-              {/* Top Songs */}
+              {/* Top Liked Artists */}
               <Card>
                 <CardHeader>
-                  <div className="flex items-center justify-between w-full">
+                  {loading ? (
+                    <SkeletonHeader />
+                  ) : (
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500/20 to-orange-500/20 flex items-center justify-center">
                         <TrophyIcon className="w-5 h-5 text-amber-400" />
                       </div>
-                      <h3 className="font-display font-semibold text-lg">Top Songs</h3>
+                      <div>
+                        <h3 className="font-display font-semibold text-lg">Top Liked Artists</h3>
+                        <p className="text-sm text-zinc-500">{topArtists.length} artists</p>
+                      </div>
                     </div>
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      onClick={handleSyncHistory}
-                      isLoading={syncing}
-                    >
-                      <RefreshIcon className="w-4 h-4" />
-                    </Button>
-                  </div>
+                  )}
                 </CardHeader>
                 <CardContent className="p-0">
                   <div className="max-h-[300px] overflow-auto">
-                    {topSongs.length === 0 ? (
+                    {loading ? (
+                      <div className="divide-y divide-white/[0.04]">
+                        <SkeletonSidebarItem />
+                        <SkeletonSidebarItem />
+                        <SkeletonSidebarItem />
+                        <SkeletonSidebarItem />
+                        <SkeletonSidebarItem />
+                      </div>
+                    ) : topArtists.length === 0 ? (
                       <div className="p-6 text-center">
-                        <p className="text-sm text-zinc-500">No rankings yet</p>
-                        <p className="text-xs text-zinc-600 mt-1">Sync history to build rankings</p>
+                        <p className="text-sm text-zinc-500">No liked artists yet</p>
+                        <p className="text-xs text-zinc-600 mt-1">Like songs to see your top artists</p>
                       </div>
                     ) : (
                       <div className="divide-y divide-white/[0.04]">
-                        {topSongs.slice(0, 10).map((s, i) => (
-                          <div key={i} className="flex items-center gap-3 px-6 py-3">
+                        {topArtists.map((artist, i) => (
+                          <div key={artist.name} className="flex items-center gap-3 px-6 py-3">
                             <span className="w-6 text-center text-sm font-bold text-zinc-600">{i + 1}</span>
                             <div className="flex-1 min-w-0">
-                              <p className="font-medium text-sm truncate">{s.entity_name}</p>
-                              <p className="text-xs text-zinc-500">{s.play_count} plays</p>
+                              <p className="font-medium text-sm truncate">{artist.name}</p>
+                              <p className="text-xs text-zinc-500">{artist.count} liked songs</p>
                             </div>
                           </div>
                         ))}
@@ -590,32 +605,54 @@ export default function Dashboard() {
               {/* Recent Likes */}
               <Card>
                 <CardHeader>
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-rose-500/20 to-pink-500/20 flex items-center justify-center">
-                      <HeartIcon className="w-5 h-5 text-rose-400" />
+                  {loading ? (
+                    <SkeletonHeader />
+                  ) : (
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-rose-500/20 to-pink-500/20 flex items-center justify-center">
+                        <HeartIcon className="w-5 h-5 text-rose-400" />
+                      </div>
+                      <div>
+                        <h3 className="font-display font-semibold text-lg">Recent Likes</h3>
+                        <p className="text-sm text-zinc-500">{liked.length} songs</p>
+                      </div>
                     </div>
-                    <h3 className="font-display font-semibold text-lg">Recent Likes</h3>
-                  </div>
+                  )}
                 </CardHeader>
                 <CardContent className="p-0">
                   <div className="max-h-[300px] overflow-auto">
-                    <div className="divide-y divide-white/[0.04]">
-                      {liked.slice(0, 10).map((t) => (
-                        <a
-                          key={t.video_id}
-                          href={`https://music.youtube.com/watch?v=${t.video_id}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex items-center gap-3 px-6 py-3 hover:bg-white/[0.02] transition-colors group"
-                        >
-                          <div className="flex-1 min-w-0">
-                            <p className="font-medium text-sm truncate">{t.title}</p>
-                            <p className="text-xs text-zinc-500 truncate">{t.artist}</p>
-                          </div>
-                          <ExternalLinkIcon className="w-4 h-4 text-zinc-600 group-hover:text-zinc-400" />
-                        </a>
-                      ))}
-                    </div>
+                    {loading ? (
+                      <div className="divide-y divide-white/[0.04]">
+                        <SkeletonSidebarItem />
+                        <SkeletonSidebarItem />
+                        <SkeletonSidebarItem />
+                        <SkeletonSidebarItem />
+                        <SkeletonSidebarItem />
+                      </div>
+                    ) : liked.length === 0 ? (
+                      <div className="p-6 text-center">
+                        <p className="text-sm text-zinc-500">No liked songs yet</p>
+                        <p className="text-xs text-zinc-600 mt-1">Like songs in YouTube Music to see them here</p>
+                      </div>
+                    ) : (
+                      <div className="divide-y divide-white/[0.04]">
+                        {liked.slice(0, 10).map((t) => (
+                          <a
+                            key={t.video_id}
+                            href={`https://music.youtube.com/watch?v=${t.video_id}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center gap-3 px-6 py-3 hover:bg-white/[0.02] transition-colors group"
+                          >
+                            <div className="flex-1 min-w-0">
+                              <p className="font-medium text-sm truncate">{t.title}</p>
+                              <p className="text-xs text-zinc-500 truncate">{t.artist}</p>
+                            </div>
+                            <ExternalLinkIcon className="w-4 h-4 text-zinc-600 group-hover:text-zinc-400" />
+                          </a>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </CardContent>
               </Card>

@@ -52,10 +52,19 @@ function TrashIcon({ className = "w-5 h-5" }: { className?: string }) {
   );
 }
 
+function ExternalLinkIcon({ className = "w-5 h-5" }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+    </svg>
+  );
+}
+
 
 export default function PlaylistPage() {
   const { playlistId } = useParams<{ playlistId: string }>();
   const [tracks, setTracks] = useState<Track[]>([]);
+  const [playlistName, setPlaylistName] = useState<string>("Playlist");
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState<{ text: string; type: "info" | "success" | "error" } | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -70,8 +79,15 @@ export default function PlaylistPage() {
   async function loadTracks() {
     setLoading(true);
     try {
-      const res = await api.getPlaylistTracks(playlistId!, 0);
-      setTracks(res.tracks || []);
+      const [tracksRes, playlistsRes] = await Promise.all([
+        api.getPlaylistTracks(playlistId!, 5000),
+        api.getPlaylists(),
+      ]);
+      setTracks(tracksRes.tracks || []);
+      const pl = playlistsRes.playlists?.find((p: any) => p.playlist_id === playlistId);
+      if (pl) {
+        setPlaylistName(pl.title);
+      }
     } catch (e: any) {
       setMessage({ text: "Error: " + e.message, type: "error" });
     } finally {
@@ -102,6 +118,17 @@ export default function PlaylistPage() {
       await api.removeTracks(playlistId!, ids);
       setSelected(new Set());
       setMessage({ text: `Removed ${ids.length} track(s)`, type: "success" });
+      await loadTracks();
+    } catch (e: any) {
+      setMessage({ text: "Remove error: " + e.message, type: "error" });
+    }
+  }
+
+  async function handleRemoveTrack(videoId: string, title: string) {
+    if (!confirm(`Remove "${title}" from playlist?`)) return;
+    try {
+      await api.removeTracks(playlistId!, [videoId]);
+      setMessage({ text: `Removed "${title}"`, type: "success" });
       await loadTracks();
     } catch (e: any) {
       setMessage({ text: "Remove error: " + e.message, type: "error" });
@@ -145,14 +172,26 @@ export default function PlaylistPage() {
             <MusicIcon className="w-6 h-6 text-violet-400" />
           </div>
           <div>
-            <h1 className="font-display text-2xl font-bold">Playlist</h1>
+            <h1 className="font-display text-2xl font-bold">{playlistName}</h1>
             <p className="text-zinc-500">{tracks.length} tracks</p>
           </div>
         </div>
-        <Button onClick={handleShuffle}>
-          <ShuffleIcon className="w-4 h-4 mr-2" />
-          True Shuffle
-        </Button>
+        <div className="flex items-center gap-2">
+          <a
+            href={`https://music.youtube.com/playlist?list=${playlistId}`}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            <Button variant="secondary">
+              <ExternalLinkIcon className="w-4 h-4 mr-2" />
+              Open in YT Music
+            </Button>
+          </a>
+          <Button onClick={handleShuffle}>
+            <ShuffleIcon className="w-4 h-4 mr-2" />
+            True Shuffle
+          </Button>
+        </div>
       </div>
 
       {/* Message */}
@@ -198,7 +237,7 @@ export default function PlaylistPage() {
                     {tracks.map((t) => (
                       <div
                         key={t.video_id + (t.set_video_id || "")}
-                        className="flex items-center gap-4 px-6 py-3 hover:bg-white/[0.02] transition-colors"
+                        className="flex items-center gap-4 px-6 py-3 hover:bg-white/[0.02] transition-colors group"
                       >
                         <input
                           type="checkbox"
@@ -213,6 +252,13 @@ export default function PlaylistPage() {
                             {t.duration && <span className="ml-2 text-zinc-600">• {t.duration}</span>}
                           </p>
                         </div>
+                        <button
+                          onClick={() => handleRemoveTrack(t.video_id, t.title)}
+                          className="opacity-0 group-hover:opacity-100 transition-opacity p-2 text-zinc-500 hover:text-rose-400"
+                          title="Remove from playlist"
+                        >
+                          <TrashIcon className="w-4 h-4" />
+                        </button>
                       </div>
                     ))}
                   </div>

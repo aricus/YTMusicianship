@@ -267,6 +267,14 @@ export default function SettingsPage({ onAuthChange }: SettingsPageProps) {
                 <span className="text-zinc-500">Version</span>
                 <p className="font-medium">1.0.0</p>
               </div>
+              <div>
+                <span className="text-zinc-500">Created by</span>
+                <p className="font-medium">Robert McClellan</p>
+              </div>
+              <div>
+                <span className="text-zinc-500">License</span>
+                <p className="font-medium">MIT</p>
+              </div>
             </div>
             <a
               href="https://github.com/aricus/YTMusicianship"

@@ -246,18 +246,28 @@ export default function MusicMatchPage() {
     }
   }
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="flex items-center gap-3 text-zinc-500">
-          <div className="w-5 h-5 border-2 border-violet-500/30 border-t-violet-500 rounded-full animate-spin" />
-          Loading...
-        </div>
-      </div>
-    );
-  }
-
   const totalSelected = selectedPlaylists.size + selectedArtists.size;
+
+  // Skeleton component for loading state
+  const SkeletonItem = () => (
+    <div className="flex items-center gap-3 p-3 rounded-xl bg-zinc-950/50 border border-white/5 animate-pulse">
+      <div className="w-5 h-5 rounded-lg bg-zinc-800" />
+      <div className="flex-1 min-w-0 space-y-2">
+        <div className="h-4 bg-zinc-800 rounded w-3/4" />
+        <div className="h-3 bg-zinc-800/50 rounded w-1/2" />
+      </div>
+    </div>
+  );
+
+  const SkeletonHeader = () => (
+    <div className="flex items-center gap-3 animate-pulse">
+      <div className="w-10 h-10 rounded-xl bg-zinc-800" />
+      <div className="space-y-2">
+        <div className="h-5 bg-zinc-800 rounded w-32" />
+        <div className="h-3 bg-zinc-800/50 rounded w-20" />
+      </div>
+    </div>
+  );
 
   return (
     <div className="max-w-5xl mx-auto space-y-6">
@@ -348,11 +358,19 @@ export default function MusicMatchPage() {
               </div>
               <div>
                 <h3 className="font-display font-semibold text-lg">AI Recommendations</h3>
-                <p className="text-sm text-zinc-500">
-                  {useAI
-                    ? "AI will analyze the vibe of your selections for intelligent recommendations"
-                    : "Simple shuffle and combine from selected sources"}
-                </p>
+                <div className="text-sm">
+                  {useAI ? (
+                    <div className="space-y-1">
+                      <p className="text-violet-400 font-medium">AI is ON</p>
+                      <p className="text-zinc-500">Will analyze the vibe of your selections for intelligent recommendations</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-1">
+                      <p className="text-zinc-400 font-medium">AI is OFF</p>
+                      <p className="text-zinc-500">Simple shuffle and combine from selected sources only</p>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
             <Toggle checked={useAI} onChange={setUseAI} />
@@ -480,19 +498,25 @@ export default function MusicMatchPage() {
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between w-full">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500/20 to-fuchsia-500/20 flex items-center justify-center">
-                  <MusicIcon className="w-5 h-5 text-violet-400" />
+              {loading ? (
+                <SkeletonHeader />
+              ) : (
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500/20 to-fuchsia-500/20 flex items-center justify-center">
+                    <MusicIcon className="w-5 h-5 text-violet-400" />
+                  </div>
+                  <div>
+                    <h3 className="font-display font-semibold">Playlists</h3>
+                    <p className="text-sm text-zinc-500">{selectedPlaylists.size} selected</p>
+                  </div>
                 </div>
-                <div>
-                  <h3 className="font-display font-semibold">Playlists</h3>
-                  <p className="text-sm text-zinc-500">{selectedPlaylists.size} selected</p>
+              )}
+              {!loading && (
+                <div className="flex gap-2">
+                  <Button size="sm" variant="ghost" onClick={selectAllPlaylists}>All</Button>
+                  <Button size="sm" variant="ghost" onClick={deselectAllPlaylists}>None</Button>
                 </div>
-              </div>
-              <div className="flex gap-2">
-                <Button size="sm" variant="ghost" onClick={selectAllPlaylists}>All</Button>
-                <Button size="sm" variant="ghost" onClick={deselectAllPlaylists}>None</Button>
-              </div>
+              )}
             </div>
           </CardHeader>
           <CardContent className="space-y-3">
@@ -500,12 +524,23 @@ export default function MusicMatchPage() {
               placeholder="Search playlists..."
               value={playlistSearch}
               onChange={(e) => setPlaylistSearch(e.target.value)}
+              disabled={loading}
             />
             <div className="max-h-64 overflow-auto space-y-2">
-              {filteredPlaylists.length === 0 && (
-                <p className="text-sm text-zinc-500 text-center py-4">No playlists found</p>
-              )}
-              {filteredPlaylists.map((pl) => (
+              {loading ? (
+                <>
+                  <SkeletonItem />
+                  <SkeletonItem />
+                  <SkeletonItem />
+                  <SkeletonItem />
+                  <SkeletonItem />
+                </>
+              ) : (
+                <>
+                  {filteredPlaylists.length === 0 && (
+                    <p className="text-sm text-zinc-500 text-center py-4">No playlists found</p>
+                  )}
+                  {filteredPlaylists.map((pl) => (
                 <label
                   key={pl.playlist_id}
                   className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all ${
@@ -526,6 +561,8 @@ export default function MusicMatchPage() {
                   </div>
                 </label>
               ))}
+                </>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -534,19 +571,25 @@ export default function MusicMatchPage() {
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between w-full">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500/20 to-blue-500/20 flex items-center justify-center">
-                  <UserIcon className="w-5 h-5 text-cyan-400" />
+              {loading ? (
+                <SkeletonHeader />
+              ) : (
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500/20 to-blue-500/20 flex items-center justify-center">
+                    <UserIcon className="w-5 h-5 text-cyan-400" />
+                  </div>
+                  <div>
+                    <h3 className="font-display font-semibold">Artists from Likes</h3>
+                    <p className="text-sm text-zinc-500">{selectedArtists.size} selected</p>
+                  </div>
                 </div>
-                <div>
-                  <h3 className="font-display font-semibold">Artists from Likes</h3>
-                  <p className="text-sm text-zinc-500">{selectedArtists.size} selected</p>
+              )}
+              {!loading && (
+                <div className="flex gap-2">
+                  <Button size="sm" variant="ghost" onClick={selectAllArtists}>All</Button>
+                  <Button size="sm" variant="ghost" onClick={deselectAllArtists}>None</Button>
                 </div>
-              </div>
-              <div className="flex gap-2">
-                <Button size="sm" variant="ghost" onClick={selectAllArtists}>All</Button>
-                <Button size="sm" variant="ghost" onClick={deselectAllArtists}>None</Button>
-              </div>
+              )}
             </div>
           </CardHeader>
           <CardContent className="space-y-3">
@@ -554,12 +597,23 @@ export default function MusicMatchPage() {
               placeholder="Search artists..."
               value={artistSearch}
               onChange={(e) => setArtistSearch(e.target.value)}
+              disabled={loading}
             />
             <div className="max-h-64 overflow-auto space-y-2">
-              {filteredArtists.length === 0 && (
-                <p className="text-sm text-zinc-500 text-center py-4">No artists found</p>
-              )}
-              {filteredArtists.map((artist) => (
+              {loading ? (
+                <>
+                  <SkeletonItem />
+                  <SkeletonItem />
+                  <SkeletonItem />
+                  <SkeletonItem />
+                  <SkeletonItem />
+                </>
+              ) : (
+                <>
+                  {filteredArtists.length === 0 && (
+                    <p className="text-sm text-zinc-500 text-center py-4">No artists found</p>
+                  )}
+                  {filteredArtists.map((artist) => (
                 <label
                   key={artist.name}
                   className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all ${
@@ -580,6 +634,8 @@ export default function MusicMatchPage() {
                   </div>
                 </label>
               ))}
+                </>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -629,12 +685,12 @@ export default function MusicMatchPage() {
 
           <div className="flex items-center justify-between">
             <p className="text-zinc-400">
-              {totalSelected === 0 ? "Select at least one source" : `${totalSelected} source(s) selected`}
+              {loading ? "Loading data..." : totalSelected === 0 ? "Select at least one source" : `${totalSelected} source(s) selected`}
             </p>
             <Button
               onClick={handleGenerate}
               isLoading={generating}
-              disabled={totalSelected === 0 || (!useAI && !name.trim())}
+              disabled={loading || totalSelected === 0 || (!useAI && !name.trim())}
               size="lg"
             >
               {useAI ? (

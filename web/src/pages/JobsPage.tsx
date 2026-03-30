@@ -43,6 +43,14 @@ function RefreshIcon({ className = "w-5 h-5" }: { className?: string }) {
   );
 }
 
+function SparklesIcon({ className = "w-5 h-5" }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+    </svg>
+  );
+}
+
 export default function JobsPage() {
   const [jobs, setJobs] = useState<Job[]>([]);
   const [playlists, setPlaylists] = useState<{ playlist_id: string; title: string }[]>([]);
@@ -73,14 +81,20 @@ export default function JobsPage() {
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
     try {
+      const config = action === "generate_discovery" && playlistId.trim()
+        ? JSON.stringify({ playlist_name: playlistId.trim() })
+        : undefined;
+
       await api.createJob({
         name,
         action,
         cron,
         target_playlist_id: action === "shuffle" ? playlistId : undefined,
+        config_json: config,
       });
       setMessage({ text: "Job created successfully", type: "success" });
       setName("");
+      setPlaylistId("");
       await loadAll();
     } catch (err: any) {
       setMessage({ text: "Create error: " + err.message, type: "error" });
@@ -153,6 +167,7 @@ export default function JobsPage() {
                 >
                   <option value="shuffle">Shuffle playlist</option>
                   <option value="sync_history">Sync history</option>
+                  <option value="generate_discovery">Generate discovery playlist</option>
                 </select>
               </div>
               {action === "shuffle" && (
@@ -171,6 +186,16 @@ export default function JobsPage() {
                       </option>
                     ))}
                   </select>
+                </div>
+              )}
+              {action === "generate_discovery" && (
+                <div>
+                  <label className="block text-sm font-medium text-zinc-400 mb-1.5">Playlist Name (optional)</label>
+                  <Input
+                    value={playlistId}
+                    onChange={(e) => setPlaylistId(e.target.value)}
+                    placeholder="Leave blank for AI-generated name"
+                  />
                 </div>
               )}
               <div>
@@ -230,14 +255,20 @@ export default function JobsPage() {
                     <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
                       job.action === 'shuffle'
                         ? 'bg-violet-500/10 text-violet-400'
-                        : 'bg-cyan-500/10 text-cyan-400'
+                        : job.action === 'generate_discovery'
+                          ? 'bg-fuchsia-500/10 text-fuchsia-400'
+                          : 'bg-cyan-500/10 text-cyan-400'
                     }`}>
-                      {job.action === 'shuffle' ? <ShuffleIcon className="w-5 h-5" /> : <RefreshIcon className="w-5 h-5" />}
+                      {job.action === 'shuffle' ? <ShuffleIcon className="w-5 h-5" />
+                        : job.action === 'generate_discovery' ? <SparklesIcon className="w-5 h-5" />
+                        : <RefreshIcon className="w-5 h-5" />}
                     </div>
                     <div>
                       <p className="font-medium">{job.name}</p>
                       <p className="text-sm text-zinc-500">
-                        {job.action === 'shuffle' ? 'Shuffle' : 'Sync'} • {job.cron}
+                        {job.action === 'shuffle' ? 'Shuffle'
+                          : job.action === 'generate_discovery' ? 'Discovery'
+                          : 'Sync'} • {job.cron}
                         {job.next_run && (
                           <span className="ml-2 text-violet-400">
                             Next: {new Date(job.next_run).toLocaleString()}

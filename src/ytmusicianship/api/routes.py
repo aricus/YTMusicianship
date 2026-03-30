@@ -1,3 +1,4 @@
+import json
 from typing import Optional
 from fastapi import APIRouter, UploadFile, File, Query
 from pydantic import BaseModel, Field
@@ -25,7 +26,7 @@ class GeneratePlaylistRequest(BaseModel):
 
 class CreateJobRequest(BaseModel):
     name: str
-    action: str = Field(..., pattern="^(shuffle|sync_history)$")
+    action: str = Field(..., pattern="^(shuffle|sync_history|generate_discovery)$")
     cron: str
     target_playlist_id: Optional[str] = None
     config_json: Optional[str] = None
@@ -298,7 +299,7 @@ async def create_playlist(payload: GeneratePlaylistRequest):
 
 
 @router.get("/playlists/{playlist_id}/tracks")
-async def get_playlist_tracks(playlist_id: str, limit: int = Query(0)):
+async def get_playlist_tracks(playlist_id: str, limit: int = Query(5000)):
     return {"tracks": await playlist.get_playlist_tracks(playlist_id, limit=limit)}
 
 
@@ -341,6 +342,70 @@ async def delete_playlist(playlist_id: str):
 async def generate_playlist(payload: GeneratePlaylistRequest):
     pl_id = await playlist.generate_playlist(name=payload.name, track_ids=payload.track_ids, description=payload.description)
     return {"playlist_id": pl_id}
+
+
+class GenerateVibeRequest(BaseModel):
+    vibe: str
+    name: Optional[str] = None
+
+
+@router.post("/playlists/generate-vibe")
+async def generate_vibe_playlist(payload: GenerateVibeRequest):
+    """
+    Generate a playlist from a vibe/mood/feeling description using AI.
+    """
+    from ytmusicianship.services.ai_musicmatch import (
+        generate_playlist_from_vibe,
+        search_tracks_on_ytmusic,
+    )
+    from ytmusicianship.services import playlist as playlist_service
+
+    if not payload.vibe.strip():
+        return {"status": "error", "message": "Please describe a vibe, mood, or feeling"}
+
+    try:
+        # Generate AI recommendations based on vibe
+        ai_result = await generate_playlist_from_vibe(
+            vibe_description=payload.vibe,
+            name=payload.name,
+        )
+    except RuntimeError as e:
+        error_msg = str(e)
+        if "AI API error:" in error_msg:
+            return {"status": "error", "message": f"AI service error: {error_msg.split(' - ', 1)[-1]}"}
+        return {"status": "error", "message": f"AI generation failed: {error_msg}"}
+    except Exception as e:
+        return {"status": "error", "message": f"Unexpected error during AI generation: {str(e)}"}
+
+    # Search for the tracks on YouTube Music
+    video_ids = await search_tracks_on_ytmusic(ai_result["tracks"])
+
+    if not video_ids:
+        return {"status": "error", "message": "AI generated tracks but none were found on YouTube Music"}
+
+    # Create the playlist with AI-generated or provided name
+    playlist_name = payload.name or ai_result["playlist_name"]
+    playlist_description = ai_result["description"]
+
+    new_playlist_id = await playlist_service.create_playlist(
+        name=playlist_name,
+        description=playlist_description,
+    )
+
+    # Add found tracks
+    await playlist_service.add_tracks_to_playlist(new_playlist_id, video_ids[:100])
+
+    return {
+        "status": "ok",
+        "playlist_id": new_playlist_id,
+        "tracks": video_ids,
+        "playlist_name": playlist_name,
+        "vibe_interpretation": ai_result.get("vibe_interpretation", ""),
+        "ai_reasoning": ai_result.get("reasoning", ""),
+        "ai_generated_name": ai_result["playlist_name"] if not payload.name else None,
+        "found_tracks": len(video_ids),
+        "requested_tracks": len(ai_result["tracks"]),
+    }
 
 
 # AI Settings
@@ -494,6 +559,146 @@ async def top_genres(limit: int = Query(20)):
 @router.get("/rankings/songs/{video_id}")
 async def song_ranking(video_id: str):
     return {"ranking": await ranking.get_song_ranking(video_id)}
+
+
+@router.post("/rankings/insights")
+async def generate_rankings_insights():
+    """Generate AI insights for top songs and artists."""
+    from ytmusicianship.services.ai_musicmatch import get_ai_settings
+
+    ai_config = await get_ai_settings()
+    if not ai_config.get("ai_api_key") or not ai_config.get("ai_base_url"):
+        return {"status": "error", "message": "AI not configured"}
+
+    # Get top songs and artists
+    top_songs = await ranking.get_top_songs(limit=20)
+    top_artists = await ranking.get_top_artists(limit=20)
+
+    if not top_songs and not top_artists:
+        return {"status": "error", "message": "No rankings data available"}
+
+    # Build the prompt for AI analysis
+    songs_text = "\n".join([
+        f"{i+1}. {s['entity_name']} - {s['play_count']} plays (Score: {round(s['score'])})"
+        for i, s in enumerate(top_songs[:20])
+    ])
+
+    artists_text = "\n".join([
+        f"{i+1}. {a['entity_name']} - {a['play_count']} plays (Score: {round(a['score'])})"
+        for i, a in enumerate(top_artists[:20])
+    ])
+
+    prompt = f"""You are a music analytics AI that provides insightful, personalized analysis of listening habits.
+
+TOP SONGS:
+{songs_text}
+
+TOP ARTISTS:
+{artists_text}
+
+Provide a concise, engaging analysis of this user's music taste. Include:
+
+FOR TOP SONGS:
+- What patterns do you see in their most-played tracks?
+- Any notable genres, eras, or themes?
+- What do these songs suggest about their listening habits?
+
+FOR TOP ARTISTS:
+- What does their artist preference reveal about their taste?
+- Are they into mainstream hits, niche artists, or a mix?
+- Any interesting patterns in the types of artists they favor?
+
+Keep each section to 3-4 sentences max. Be conversational and friendly, not robotic.
+
+RESPOND ONLY with a JSON object in this exact format:
+{{
+  "top_songs_insight": "string with your analysis of their top songs",
+  "top_artists_insight": "string with your analysis of their top artists",
+  "overall_vibe": "One sentence summary of their overall music taste"
+}}"""
+
+    import httpx
+
+    base_url = ai_config["ai_base_url"].rstrip("/")
+    api_key = ai_config["ai_api_key"]
+    model = ai_config.get("ai_model") or "gpt-4"
+
+    async with httpx.AsyncClient(timeout=60.0) as client:
+        response = await client.post(
+            f"{base_url}/chat/completions",
+            headers={
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json",
+            },
+            json={
+                "model": model,
+                "messages": [
+                    {"role": "system", "content": "You are a music analytics expert. Respond only with valid JSON."},
+                    {"role": "user", "content": prompt}
+                ],
+                "temperature": 0.8,
+                "max_tokens": 1500,
+            }
+        )
+
+        if response.status_code != 200:
+            return {"status": "error", "message": f"AI API error: {response.status_code}"}
+
+        data = response.json()
+        content = data["choices"][0]["message"]["content"]
+
+        # Parse JSON response (handle markdown code blocks)
+        json_str = content
+        if "```json" in content:
+            json_str = content.split("```json")[1].split("```")[0]
+        elif "```" in content:
+            json_str = content.split("```")[1].split("```")[0]
+
+        try:
+            result = json.loads(json_str.strip())
+        except json.JSONDecodeError:
+            # Fallback: try to parse the raw content
+            try:
+                result = json.loads(content.strip())
+            except json.JSONDecodeError:
+                # If still failing, return a generic insight
+                return {
+                    "status": "ok",
+                    "top_songs_insight": "Your top songs show a diverse mix of tracks you've been enjoying lately.",
+                    "top_artists_insight": f"Your listening is led by {top_artists[0]['entity_name'] if top_artists else 'various artists'}, showing strong preferences in your music taste.",
+                    "overall_vibe": "A varied musical palette with some clear favorites.",
+                }
+
+        insights = {
+            "top_songs_insight": result.get("top_songs_insight", ""),
+            "top_artists_insight": result.get("top_artists_insight", ""),
+            "overall_vibe": result.get("overall_vibe", ""),
+        }
+
+        # Save insights to database
+        async with AsyncSessionLocal() as session:
+            row = await session.get(Setting, "rankings_insights")
+            insights_json = json.dumps(insights)
+            if row:
+                row.value = insights_json
+            else:
+                session.add(Setting(key="rankings_insights", value=insights_json))
+            await session.commit()
+
+        return {
+            "status": "ok",
+            **insights,
+        }
+
+
+@router.get("/rankings/insights")
+async def get_rankings_insights():
+    """Get saved AI insights for rankings."""
+    async with AsyncSessionLocal() as session:
+        row = await session.get(Setting, "rankings_insights")
+        if row and row.value:
+            return {"status": "ok", **json.loads(row.value)}
+        return {"status": "error", "message": "No insights available"}
 
 
 # Jobs

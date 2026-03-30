@@ -53,6 +53,60 @@ async def create_job(name: str, action: str, cron: str, target_playlist_id: str 
             replace_existing=True,
             **cron_kwargs,
         )
+    elif action == "generate_discovery":
+        from ytmusicianship.services.ai_musicmatch import generate_discovery_playlist, search_tracks_on_ytmusic
+        from ytmusicianship.services import playlist as playlist_service
+
+        async def _generate_discovery():
+            """Generate discovery playlist based on user taste."""
+            try:
+                # Parse config if provided
+                import json
+                config = json.loads(config_json) if config_json else {}
+                playlist_name = config.get("playlist_name")
+                description = config.get("description", "Your weekly discovery mix")
+                track_count = config.get("track_count", 100)
+
+                # Generate AI recommendations
+                ai_result = await generate_discovery_playlist(
+                    name=playlist_name,
+                    description=description,
+                    track_count=track_count,
+                )
+
+                # Search for tracks on YouTube Music
+                video_ids = await search_tracks_on_ytmusic(ai_result["tracks"])
+
+                if not video_ids:
+                    print(f"[Discovery Job {job_id}] No tracks found on YouTube Music")
+                    return
+
+                # Create the playlist
+                final_name = ai_result["playlist_name"]
+                new_playlist_id = await playlist_service.create_playlist(
+                    name=final_name,
+                    description=ai_result["description"],
+                )
+
+                # Add found tracks
+                await playlist_service.add_tracks_to_playlist(new_playlist_id, video_ids[:track_count])
+
+                print(f"[Discovery Job {job_id}] Created playlist '{final_name}' with {len(video_ids)} tracks")
+
+            except Exception as e:
+                print(f"[Discovery Job {job_id}] Error: {e}")
+
+        def _run_discovery_job():
+            import asyncio
+            asyncio.run(_generate_discovery())
+
+        scheduler.add_job(
+            func=_run_discovery_job,
+            trigger="cron",
+            id=job_id,
+            replace_existing=True,
+            **cron_kwargs,
+        )
     else:
         raise ValueError(f"Unknown action: {action}")
 

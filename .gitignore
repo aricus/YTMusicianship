@@ -51,3 +51,8 @@ web/.cache/
 *.log
 logs/
 .worktrees/
+
+# Project folders to exclude
+.github/
+docs/superpowers/
+skill-definition/

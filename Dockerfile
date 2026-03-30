@@ -13,6 +13,10 @@ WORKDIR /app
 # Install build dependencies for any compiled python packages
 RUN apt-get update && apt-get install -y --no-install-recommends gcc && rm -rf /var/lib/apt/lists/*
 
+# Create non-root user and group
+RUN groupadd --gid 1000 ytmuser && \
+    useradd --uid 1000 --gid ytmuser --shell /bin/bash --create-home ytmuser
+
 # Copy Python files
 COPY pyproject.toml ./
 COPY src/ ./src/
@@ -23,8 +27,11 @@ RUN pip install --no-cache-dir -e "."
 # Copy built frontend
 COPY --from=web-builder /app/web/dist ./web/dist
 
-# Ensure data directory exists (bind-mounted at runtime)
-RUN mkdir -p /app/data
+# Create data directory and set ownership
+RUN mkdir -p /app/data && chown -R ytmuser:ytmuser /app
+
+# Switch to non-root user
+USER ytmuser
 
 VOLUME ["/app/data"]
 
