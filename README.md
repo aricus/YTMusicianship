@@ -69,6 +69,10 @@ MusicMatch is the crown jewel of YTMusicianship. Instead of just shuffling songs
 - **Transparency**: See exactly what "vibe" the AI detected and how it made its choices
 
 ### 🤖 AI Playlist Generation
+
+<img width="1459" height="652" alt="image" src="https://github.com/user-attachments/assets/8e115545-b52f-49d7-a2d0-dcdcd317b545" />
+
+
 Ask your AI assistant to build a playlist for you. The AI can inspect your likes, search YouTube Music, look at your top-ranked songs/artists, and then call `generate_playlist` with the perfect track list.
 
 ### 📊 Automatic Taste Ranking
