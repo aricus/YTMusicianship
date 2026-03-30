@@ -6,6 +6,8 @@
 [![MCP](https://img.shields.io/badge/MCP-compatible-purple)](https://modelcontextprotocol.io)
 [![Python](https://img.shields.io/badge/python-3.12-blue?logo=python)](https://python.org)
 
+<img width="2206" height="1681" alt="image" src="https://github.com/user-attachments/assets/263b1221-ce17-4053-a595-40655e43b53f" />
+
 ---
 
 ## What is YTMusicianship?
