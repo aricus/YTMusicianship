@@ -51,6 +51,8 @@ When shuffling a single playlist that you own, the new shuffled playlist will ha
 
 **Multi-Playlist Shuffle**: Select multiple playlists and combine them into one giant shuffled mix—perfect for parties or discovering forgotten favorites across different collections.
 
+
+
 ### 🎵 MusicMatch — AI That Understands the "Vibe"
 
 <img width="2161" height="1674" alt="image" src="https://github.com/user-attachments/assets/910c71bb-7b9f-4843-9f09-fbd954bf3219" />
@@ -70,6 +72,8 @@ MusicMatch is the crown jewel of YTMusicianship. Instead of just shuffling songs
 - **Taste Profile Awareness**: The AI knows your top artists, top songs, and liked artists to make informed recommendations
 - **Transparency**: See exactly what "vibe" the AI detected and how it made its choices
 
+
+
 ### 🤖 AI Playlist Generation
 
 <img width="1459" height="652" alt="image" src="https://github.com/user-attachments/assets/8e115545-b52f-49d7-a2d0-dcdcd317b545" />
@@ -77,12 +81,16 @@ MusicMatch is the crown jewel of YTMusicianship. Instead of just shuffling songs
 
 Ask your AI assistant to build a playlist for you. The AI can inspect your likes, search YouTube Music, look at your top-ranked songs/artists, and then call `generate_playlist` with the perfect track list.
 
+
+
 ### 📊 Automatic Taste Ranking
 The system periodically syncs your YouTube Music listening history and computes rankings for:
 - **Top Songs** — weighted by recency, play count, and likes
 - **Top Artists** — automatically inferred from your history and liked songs
 
 This means the AI truly understands what you like before it makes suggestions. The ranking uses recency-weighted scoring (half-life ~30 days), so recent plays count more.
+
+
 
 ### ⏰ Scheduled Jobs
 
@@ -93,14 +101,20 @@ Create cron-based jobs inside the app:
 - `"0 8 * * 1"` → Shuffle your playlist every **Monday at 8:00 AM**
 - `"0 2 * * *"` → Sync history and recompute rankings every night at 2:00 AM
 
+
+
 ### 🔌 Cross-Platform AI Skill
 The included skill definition lets you wire this into any MCP-compatible AI system.
 
 ---
 
+
+
 ## Quick Start (Docker)
 
 The easiest way to run YTMusicianship is with Docker Compose.
+
+
 
 ### 1. Clone the repository
 
