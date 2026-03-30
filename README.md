@@ -51,6 +51,9 @@ When shuffling a single playlist that you own, the new shuffled playlist will ha
 
 ### 🎵 MusicMatch — AI That Understands the "Vibe"
 
+<img width="2161" height="1674" alt="image" src="https://github.com/user-attachments/assets/910c71bb-7b9f-4843-9f09-fbd954bf3219" />
+
+
 MusicMatch is the crown jewel of YTMusicianship. Instead of just shuffling songs you already know, MusicMatch uses AI to understand the **emotional quality** of your selections and find songs that match that *feeling*.
 
 **Example**: Select Eminem, Jesse & Joy, and the Hamilton Cast. The AI doesn't just pick rap, Latin pop, and Broadway. It identifies the **storytelling intensity**, **emotional rawness**, and **theatrical energy** shared by all three—and finds other songs with those same qualities across any genre.
