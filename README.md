@@ -44,6 +44,7 @@ It is a self-hosted service that runs on your machine (inside Docker) and gives 
 
 <img width="2259" height="1678" alt="image" src="https://github.com/user-attachments/assets/ea01c85e-e1f4-426a-bc35-2b68226d38cc" />
 
+
 Fetch your **entire** playlist, shuffle it client-side with Fisher-Yates, and create a new playlist with the full shuffled order. No more 50-song limits!
 
 When shuffling a single playlist that you own, the new shuffled playlist will have the same name as the original (plus "(Shuffled)"), and the original is cleaned up automatically. Your music stays organized without duplicate playlists cluttering your library.
@@ -53,6 +54,7 @@ When shuffling a single playlist that you own, the new shuffled playlist will ha
 ### 🎵 MusicMatch — AI That Understands the "Vibe"
 
 <img width="2161" height="1674" alt="image" src="https://github.com/user-attachments/assets/910c71bb-7b9f-4843-9f09-fbd954bf3219" />
+
 
 
 MusicMatch is the crown jewel of YTMusicianship. Instead of just shuffling songs you already know, MusicMatch uses AI to understand the **emotional quality** of your selections and find songs that match that *feeling*.
@@ -83,6 +85,10 @@ The system periodically syncs your YouTube Music listening history and computes 
 This means the AI truly understands what you like before it makes suggestions. The ranking uses recency-weighted scoring (half-life ~30 days), so recent plays count more.
 
 ### ⏰ Scheduled Jobs
+
+<img width="2220" height="1641" alt="image" src="https://github.com/user-attachments/assets/4107f759-8f45-416c-9763-206eb5817749" />
+
+
 Create cron-based jobs inside the app:
 - `"0 8 * * 1"` → Shuffle your playlist every **Monday at 8:00 AM**
 - `"0 2 * * *"` → Sync history and recompute rankings every night at 2:00 AM
